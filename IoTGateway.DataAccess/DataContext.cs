@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
+using IoTGateway.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using WalkingTec.Mvvm.Core;
@@ -9,6 +10,11 @@ namespace IoTGateway.DataAccess
     public class DataContext : FrameworkContext
     {
         public DbSet<FrameworkUser> FrameworkUsers { get; set; }
+        public DbSet<Device> Devices { get; set; }
+        public DbSet<DeviceConfig> DeviceConfigs { get; set; }
+        public DbSet<DeviceVariable> DeviceVariables { get; set; }
+        public DbSet<Driver> Drivers { get; set; }
+        public DbSet<SystemConfig> SystemConfig { get; set; }
 
 
         public DataContext(CS cs)
@@ -73,7 +79,7 @@ namespace IoTGateway.DataAccess
     {
         public DataContext CreateDbContext(string[] args)
         {
-            return new DataContext("your full connection string", DBTypeEnum.SqlServer);
+            return new DataContext("Data Source = ../IoTGateway/iotgateway.db", DBTypeEnum.SQLite);
         }
     }
 

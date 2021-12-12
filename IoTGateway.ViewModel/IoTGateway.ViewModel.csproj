@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\IoTGateway.Model\IoTGateway.Model.csproj" />
-  </ItemGroup >
+    <ProjectReference Include="..\Plugins\Plugin\Plugin.csproj" />
+  </ItemGroup>
 </Project>
 

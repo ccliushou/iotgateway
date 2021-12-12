@@ -32,12 +32,13 @@ namespace IoTGateway
                  })
                 .ConfigureWebHostDefaults(webBuilder =>
                  {
-                     webBuilder.UseStartup<Startup>(); 
+                     webBuilder.UseStartup<Startup>();
                      webBuilder.UseKestrel(option =>
                      {
                          option.ListenAnyIP(518);
                      });
                  });
+                //.UseServiceProviderFactory(new AutofacServiceProviderFactory());
         }
     }
 }

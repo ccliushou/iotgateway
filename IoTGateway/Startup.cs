@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Plugin;
 using WalkingTec.Mvvm.Core;
 using WalkingTec.Mvvm.Core.Extensions;
 using WalkingTec.Mvvm.Core.Support.FileHandlers;
@@ -56,11 +58,18 @@ namespace IoTGateway
                 options.FileSubDirSelector = SubDirSelector;
                 options.ReloadUserFunc = ReloadUser;
             });
-
+            services.AddHostedService<IoTBackgroundService>();
+            services.AddSingleton<DeviceService>();
+            services.AddSingleton<DrvierService>();
+            services.AddSingleton<MyMqttClient>();
         }
 
+        //public void ConfigureContainer(ContainerBuilder containerBuilder)
+        //{
+        //    containerBuilder.RegisterModule<ConfigureAutofac>();
+        //}
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IOptionsMonitor<Configs> configs)
+        public void Configure(IApplicationBuilder app, IOptionsMonitor<Configs> configs, DeviceService deviceService)
         {
             IconFontsHelper.GenerateIconFont();
 

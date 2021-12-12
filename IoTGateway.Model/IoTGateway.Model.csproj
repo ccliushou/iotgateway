@@ -8,6 +8,11 @@
 
   <ItemGroup>
     <PackageReference Include="WalkingTec.Mvvm.Core" Version="5.7.0" />
-  </ItemGroup >
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <ProjectReference Include="..\Plugins\PluginInterface\PluginInterface.csproj" />
+  </ItemGroup>
 </Project>
 

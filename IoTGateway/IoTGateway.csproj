@@ -24,7 +24,10 @@
    <ProjectReference Include="..\IoTGateway.Model\IoTGateway.Model.csproj" />
     <ProjectReference Include="..\IoTGateway.DataAccess\IoTGateway.DataAccess.csproj" />
     <ProjectReference Include="..\IoTGateway.ViewModel\IoTGateway.ViewModel.csproj" />
+    <ProjectReference Include="..\Plugins\Plugin\Plugin.csproj" />
  </ItemGroup>
+
+  <ProjectExtensions><VisualStudio><UserProperties appsettings_1json__JsonSchema="" /></VisualStudio></ProjectExtensions>
 </Project>
 
 
