@@ -29,7 +29,7 @@ namespace IoTGateway.Controllers
         [AllRights]
         public IActionResult Index()
         {
-            ViewData["title"] = "IoTGateway";
+            ViewData["title"] = "";
             return View();
         }
 
