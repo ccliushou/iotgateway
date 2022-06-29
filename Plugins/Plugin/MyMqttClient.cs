@@ -507,19 +507,26 @@ namespace Plugin
                                         var keylist= payload.Values.Keys.ToList();
                                         var vallist = payload.Values.Values.ToList();
                                         IotTsData tsData = null;
-                                        if (keylist.Count==1&& vallist[0].GetType()== typeof(ushort[]))
+                                        if (vallist[0].GetType()== typeof(ushort[]))
                                         {
-                                            var tempData = vallist[0] as ushort[];
                                             tsData = new IotTsData()
                                             {
                                                 device = device.DeviceName,
-                                                timestamp = payload.TS, measurements = new List<string>(), values=new List<dynamic>()
+                                                timestamp = payload.TS,
+                                                measurements = new List<string>(),
+                                                values = new List<dynamic>()
                                             };
-                                            for (int i = 0; i < tempData.Length; i++)
+                                            for (int i = 0; i < vallist.Count; i++)
                                             {
-                                                tsData.measurements.Add(String.Format("{0}_{1}", keylist[0], i));
-                                                tsData.values.Add(tempData[i]);
+
+                                                var tempData = vallist[i] as ushort[];
+                                                for (int j = 0; j < tempData.Length; j++)
+                                                {
+                                                    tsData.measurements.Add(String.Format("{0}_{1}", keylist[i], j));
+                                                    tsData.values.Add(tempData[j]);
+                                                }
                                             }
+
                                         }
                                         else
                                         {
@@ -533,7 +540,10 @@ namespace Plugin
                                             };
                                         }
                                         if(tsData != null)
-                                            Client.PublishAsync(device.DeviceName, JsonConvert.SerializeObject(tsData));
+                                        {
+                                            var str = JsonConvert.SerializeObject(tsData);
+                                            Client.PublishAsync(device.DeviceName, str);
+                                        }
                                     }
                                 }
 
