@@ -509,7 +509,6 @@ namespace OpcUaHelper
                     AttributeId = Attributes.Value
                 } );
             }
-
             // 读取当前的值
             m_session.Read(
                 null,
@@ -1109,12 +1108,12 @@ namespace OpcUaHelper
         /// </summary>
         /// <param name="tag">节点值</param>
         /// <returns>引用节点描述</returns>
-        public ReferenceDescription[] BrowseNodeReference( string tag )
+        public ReferenceDescription[] BrowseNodeReference(string tag)
         {
-            NodeId sourceId = new NodeId( tag );
+            NodeId sourceId = new NodeId(tag);
 
             // 该节点可以读取到方法
-            BrowseDescription nodeToBrowse1 = new BrowseDescription( );
+            BrowseDescription nodeToBrowse1 = new BrowseDescription();
 
             nodeToBrowse1.NodeId = sourceId;
             nodeToBrowse1.BrowseDirection = BrowseDirection.Forward;
@@ -1125,7 +1124,7 @@ namespace OpcUaHelper
 
             // 该节点无论怎么样都读取不到方法
             // find all nodes organized by the node.
-            BrowseDescription nodeToBrowse2 = new BrowseDescription( );
+            BrowseDescription nodeToBrowse2 = new BrowseDescription();
 
             nodeToBrowse2.NodeId = sourceId;
             nodeToBrowse2.BrowseDirection = BrowseDirection.Forward;
@@ -1134,14 +1133,51 @@ namespace OpcUaHelper
             nodeToBrowse2.NodeClassMask = (uint)(NodeClass.Object | NodeClass.Variable);
             nodeToBrowse2.ResultMask = (uint)BrowseResultMask.All;
 
-            BrowseDescriptionCollection nodesToBrowse = new BrowseDescriptionCollection( );
-            nodesToBrowse.Add( nodeToBrowse1 );
-            nodesToBrowse.Add( nodeToBrowse2 );
 
+
+            BrowseDescription nodeToBrowse3 = new BrowseDescription();
+
+            nodeToBrowse3.NodeId = sourceId;
+            nodeToBrowse3.BrowseDirection = BrowseDirection.Forward;
+            nodeToBrowse3.ReferenceTypeId = ReferenceTypeIds.HasComponent;
+            nodeToBrowse3.IncludeSubtypes = false;
+            nodeToBrowse3.NodeClassMask =0;
+
+
+
+            BrowseDescriptionCollection nodesToBrowse = new BrowseDescriptionCollection();
+            nodesToBrowse.Add(nodeToBrowse1);
+            nodesToBrowse.Add(nodeToBrowse2);
+            nodesToBrowse.Add(nodeToBrowse3);
             // fetch references from the server.
-            ReferenceDescriptionCollection references = FormUtils.Browse( m_session, nodesToBrowse, false );
+            ReferenceDescriptionCollection references = FormUtils.Browse(m_session, nodesToBrowse, false);
 
-            return references.ToArray( );
+            return references?.ToArray();
+        }
+
+
+
+        /// <summary>
+        /// 浏览一个节点的引用
+        /// </summary>
+        /// <param name="tag">节点值</param>
+        /// <returns>引用节点描述</returns>
+        public ReferenceDescription[] BrowseNodeReference2( string tag )
+        {
+
+            NodeId sourceId = new NodeId(tag);
+            Browser browser = new Browser(m_session)
+            {
+                BrowseDirection = BrowseDirection.Forward,
+                ReferenceTypeId = ReferenceTypeIds.HasComponent,
+                //ReferenceTypeId = ReferenceTypeIds.Organizes,
+                IncludeSubtypes = false,
+                NodeClassMask = 0
+            };
+
+            ReferenceDescriptionCollection references = browser.Browse(sourceId);
+            return references?.ToArray();
+
         }
 
         #endregion BrowseNode Support

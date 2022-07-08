@@ -385,7 +385,12 @@ namespace DriverModbusMaster
                 }
                 else if (ioarg.ValueType.ToString().Contains("Any"))
                 {
-                    ret.Value = retBuffers;
+                    Dictionary<string,dynamic> keyValuePairs = new Dictionary<string, dynamic>();
+                    for (int i = 0; i < retBuffers.Length; i++)
+                    {
+                        keyValuePairs.Add(string.Format("_{0}",i), retBuffers[i]);
+                    }
+                    ret.Value = keyValuePairs;
                 }
 
             }

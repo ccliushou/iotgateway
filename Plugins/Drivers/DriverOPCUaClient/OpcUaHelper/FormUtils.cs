@@ -505,6 +505,7 @@ namespace OpcUaHelper
             }
         }
 
+
         /// <summary>
         /// Finds the type of the event for the notification.
         /// </summary>

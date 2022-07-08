@@ -506,43 +506,73 @@ namespace Plugin
 
                                         var keylist= payload.Values.Keys.ToList();
                                         var vallist = payload.Values.Values.ToList();
-                                        IotTsData tsData = null;
-                                        if (vallist[0].GetType()== typeof(ushort[]))
+                                        
+                                        //if (vallist[0].GetType()== typeof(ushort[]))
+                                        //{
+                                        //    tsData = new IotTsData()
+                                        //    {
+                                        //        device = device.DeviceName,
+                                        //        timestamp = payload.TS,
+                                        //        measurements = new List<string>(),
+                                        //        values = new List<dynamic>()
+                                        //    };
+                                        //    for (int i = 0; i < vallist.Count; i++)
+                                        //    {
+
+                                        //        var tempData = vallist[i] as ushort[];
+                                        //        for (int j = 0; j < tempData.Length; j++)
+                                        //        {
+                                        //            tsData.measurements.Add(String.Format("{0}_{1}", keylist[i], j));
+                                        //            tsData.values.Add(tempData[j]);
+                                        //        }
+                                        //    }
+
+                                        //}
+                                        //else
+                                        if (vallist[0].GetType() == typeof(Dictionary<string, dynamic>))
                                         {
-                                            tsData = new IotTsData()
-                                            {
-                                                device = device.DeviceName,
-                                                timestamp = payload.TS,
-                                                measurements = new List<string>(),
-                                                values = new List<dynamic>()
-                                            };
                                             for (int i = 0; i < vallist.Count; i++)
                                             {
-
-                                                var tempData = vallist[i] as ushort[];
-                                                for (int j = 0; j < tempData.Length; j++)
+                                                string payloadKey = keylist[i];
+                                                var tempData = vallist[i] as Dictionary<string, dynamic>;
+                                                for (int j = 0; j < tempData.Count; j++)
                                                 {
-                                                    tsData.measurements.Add(String.Format("{0}_{1}", keylist[i], j));
-                                                    tsData.values.Add(tempData[j]);
+
+                                                    var newKeyList = tempData.Keys.ToArray().
+                                                                            Select(s =>
+                                                                                {
+                                                                                    return string.Format("{0}{1}", payloadKey, s);
+                                                                                }).ToList();
+
+                                                    var dic_tsData = new IotTsData()
+                                                    {
+                                                        device = device.DeviceName,
+                                                        timestamp = payload.TS,
+                                                        measurements = newKeyList,
+                                                        values = tempData.Values.ToList()
+                                                    };
+
+                                                    var str = JsonConvert.SerializeObject(dic_tsData);
+                                                    Client.PublishAsync(device.DeviceName, str);
                                                 }
                                             }
 
                                         }
                                         else
                                         {
-
-                                            tsData = new IotTsData()
+                                            IotTsData tsData  = new IotTsData()
                                             {
                                                 device = device.DeviceName,
                                                 timestamp = payload.TS,
                                                 measurements = keylist,
                                                 values = vallist
                                             };
-                                        }
-                                        if(tsData != null)
-                                        {
-                                            var str = JsonConvert.SerializeObject(tsData);
-                                            Client.PublishAsync(device.DeviceName, str);
+
+                                            if (tsData != null)
+                                            {
+                                                var str = JsonConvert.SerializeObject(tsData);
+                                                Client.PublishAsync(device.DeviceName, str);
+                                            }
                                         }
                                     }
                                 }
