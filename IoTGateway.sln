@@ -47,6 +47,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DriverFanucHsl", "Plugins\D
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DriverFanuc", "Plugins\Drivers\DriverFanuc\DriverFanuc.csproj", "{41F81606-1728-4A03-AE64-FA2CCF49BE5A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DriverCollectOPCUaDataClient", "Plugins\Drivers\DriverCollectOPCUaDataClient\DriverCollectOPCUaDataClient.csproj", "{51F1EFA0-19CD-437E-8434-406E4F8619F3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -207,6 +209,14 @@ Global
 		{41F81606-1728-4A03-AE64-FA2CCF49BE5A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{41F81606-1728-4A03-AE64-FA2CCF49BE5A}.Release|x86.ActiveCfg = Release|Any CPU
 		{41F81606-1728-4A03-AE64-FA2CCF49BE5A}.Release|x86.Build.0 = Release|Any CPU
+		{51F1EFA0-19CD-437E-8434-406E4F8619F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{51F1EFA0-19CD-437E-8434-406E4F8619F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{51F1EFA0-19CD-437E-8434-406E4F8619F3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{51F1EFA0-19CD-437E-8434-406E4F8619F3}.Debug|x86.Build.0 = Debug|Any CPU
+		{51F1EFA0-19CD-437E-8434-406E4F8619F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{51F1EFA0-19CD-437E-8434-406E4F8619F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{51F1EFA0-19CD-437E-8434-406E4F8619F3}.Release|x86.ActiveCfg = Release|Any CPU
+		{51F1EFA0-19CD-437E-8434-406E4F8619F3}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -228,6 +238,7 @@ Global
 		{F8EC5EDE-9A2C-443B-B125-E39C748EBB2F} = {D05CFF72-D58C-418A-8F52-B06848DAC4F1}
 		{10D22B6E-DE30-4F11-A005-8188DF549F72} = {D05CFF72-D58C-418A-8F52-B06848DAC4F1}
 		{41F81606-1728-4A03-AE64-FA2CCF49BE5A} = {D05CFF72-D58C-418A-8F52-B06848DAC4F1}
+		{51F1EFA0-19CD-437E-8434-406E4F8619F3} = {D05CFF72-D58C-418A-8F52-B06848DAC4F1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1F219808-E6E8-4C1D-B846-41F2F7CF20FA}

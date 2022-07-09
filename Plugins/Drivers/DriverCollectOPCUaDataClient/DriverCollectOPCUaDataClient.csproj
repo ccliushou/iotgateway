@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+
+
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<OutputPath>../../../IoTGateway/bin/Debug/net6.0/drivers</OutputPath>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+	
+
+  <ItemGroup>
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.4.367.75" />
+    <PackageReference Include="Salvini.IoTDB" Version="1.13.760.1" />
+    <PackageReference Include="Silkier" Version="1.0.424" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\PluginInterface\PluginInterface.csproj" />
+  </ItemGroup>
+
+</Project>

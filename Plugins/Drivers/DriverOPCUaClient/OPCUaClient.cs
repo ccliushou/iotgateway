@@ -31,6 +31,12 @@ namespace DriverOPCUaClient
         [ConfigParameter("最小通讯周期ms")]
         public uint MinPeriod { get; set; } = 3000;
 
+
+
+        [ConfigParameter("TopNodeId")]
+        public string TopNodeId { get; set; } = "ns=2;s=实时模拟";
+
+
         #endregion
 
         public OPCUaClient(Guid deviceId)
@@ -258,7 +264,7 @@ namespace DriverOPCUaClient
                     {
                         replaceMeasuStr=strArray[1];
                     }
-                    ReferenceDescription[] NodeList = opcUaClient.BrowseNodeReference(tag);
+                    ReferenceDescription[] NodeList = opcUaClient.BrowseNodeReference2(tag);
                     var nodeIDList = NodeList.Where(item =>
                         {
                             return (item.NodeClass == NodeClass.Variable);
@@ -279,10 +285,12 @@ namespace DriverOPCUaClient
                                 string keyStr = nodeKey.ToString();
                                 int num2 = keyStr.IndexOf(';');
                                 string tempKey = keyStr.Substring(num2 + 3);
+
+                                tempKey = tempKey.Replace('#', ' ')
+                                                .Replace("\"", "");
+
                                 if (!string.IsNullOrEmpty(replaceMeasuStr))
                                     tempKey = tempKey.Replace(replaceMeasuStr, "");
-                                tempKey= tempKey.Replace('#', ' ')
-                                                .Replace("\"","");
                                 dataValues.Add(string.Format("_{0}",tempKey), nodeData.Value);
                             }
                         }
