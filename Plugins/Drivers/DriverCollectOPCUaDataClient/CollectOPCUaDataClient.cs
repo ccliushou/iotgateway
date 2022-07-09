@@ -1,5 +1,6 @@
 ﻿using DriverCollectOPCUaDataClient.IotDbExt;
 using Opc.Ua;
+using Opc.Ua.Client;
 using OpcUaHelper;
 using PluginInterface;
 using Silkier.Extensions;
@@ -50,6 +51,8 @@ namespace DriverCollectOPCUaDataClient
         [ConfigParameter("第六组NodeId")]
         public string TopNodeId_6 { get; set; } = "数据6|ns=2;s=实时模拟";
 
+        [ConfigParameter("是否启动订阅模式")]
+        public bool IsSubscription { get; set; } = true;
 
         #endregion
 
@@ -83,15 +86,49 @@ namespace DriverCollectOPCUaDataClient
         }
         private List<ReferenceDescription> GetBrowseVariableNodeList(string tag)
         {
+            if (opcUaClient == null || string.IsNullOrEmpty(tag))
+                return null;
             ReferenceDescription[] NodeList = opcUaClient.BrowseNodeReference2(tag);
+            if(NodeList == null|| NodeList.Length==0)
+                NodeList = opcUaClient.BrowseNodeReference(tag);
+
             var nodeDescriptionList = NodeList.Where(item =>
             {
                 return (item.NodeClass == NodeClass.Variable);
             }).ToList();
             return nodeDescriptionList;
         }
+        private void SubscripCallBack(string key, MonitoredItem item, MonitoredItemNotificationEventArgs e)
+        {
+            MonitoredItemNotification monitoredItemNotification = e.NotificationValue as MonitoredItemNotification;
+            if (monitoredItemNotification != null)
+            {
+
+                string[] tagInfor = key.Split("|");
+
+                var deviceShortNameByStorageGroupName = string.Format("{0}.{1}", StorageGroupName, tagInfor[0]);
+                var measurePointInfor = tagInfor[1];
+                ReferenceDescription referenceDescription = new ReferenceDescription() { DisplayName = new LocalizedText(measurePointInfor) };
+
+                Console.WriteLine($"{key},{item.ToString()},{monitoredItemNotification.Value.Value.ToString()}");
+                DateTime ts = monitoredItemNotification.Message.PublishTime.AddHours(8);//转为北京时间
+
+
+                var res = SaveNodeDataValue2IotDb(deviceShortNameByStorageGroupName,
+                                                    ts,
+                                                    new List<DataValue>() { monitoredItemNotification.Value },
+                                                    new List<ReferenceDescription>() { referenceDescription }).Result;
+            }
+        }
+        private void TestSubscription()
+        {
+            //opcUaClient.AddSubscription("testSub", SubscriptionNodeId, SubscripCallBack);
+        }
         private void InitNodeList(string TopTag)
         {
+            if (string.IsNullOrEmpty(TopTag))
+                return;
+
             string[] tasInfor = TopTag.Split("|");
             if (tasInfor.Length != 2)
                 return;
@@ -161,14 +198,27 @@ namespace DriverCollectOPCUaDataClient
                 var isok = opcUaClient.ConnectServer(Uri).Wait(Timeout);
                 if (isok)
                 {
-
-                    //var Tag = ioarg.Address.Replace("&quot;", "\"");
+                    opcUaClient.RemoveAllSubscription();//清除订阅
                     InitNodeList(this.TopNodeId_1.ReplaceNodeIdStr());
                     InitNodeList(this.TopNodeId_2.ReplaceNodeIdStr());
                     InitNodeList(this.TopNodeId_3.ReplaceNodeIdStr());
                     InitNodeList(this.TopNodeId_4.ReplaceNodeIdStr());
                     InitNodeList(this.TopNodeId_5.ReplaceNodeIdStr());
                     InitNodeList(this.TopNodeId_6.ReplaceNodeIdStr());
+
+                    if(IsSubscription)
+                    {
+                        foreach (var item in OpcVariableNodeDic)
+                        {
+                            //item.Key
+                            foreach (var n in item.Value)
+                            {
+                                opcUaClient.AddSubscription($"{item.Key}|{n.DisplayName.Text}" , n.NodeId.ToString(), SubscripCallBack);
+                            }
+
+                        }
+                        //opcUaClient.AddSubscription()
+                    }
                 }
             }
             catch (Exception)
@@ -218,6 +268,7 @@ namespace DriverCollectOPCUaDataClient
                 {
                     var Tag = ioarg.Address.Replace("&quot;", "\"");
                     var dataValue = opcUaClient.ReadNode(new NodeId(Tag));
+
                     if (DataValue.IsGood(dataValue))
                         ret.Value = dataValue.Value;
                 }
@@ -272,7 +323,7 @@ namespace DriverCollectOPCUaDataClient
             return str;
         }
         [Method("读OPCUa多个节点", description: "读OPCUa多个节点")]
-        public DriverReturnValueModel ReadMultipleNode(DriverAddressIoArgModel ioarg)
+        public  DriverReturnValueModel ReadMultipleNode(DriverAddressIoArgModel ioarg)
         {
             var ret = new DriverReturnValueModel { StatusType = VaribaleStatusTypeEnum.Good };
 
@@ -318,51 +369,12 @@ namespace DriverCollectOPCUaDataClient
 
                     if (nodeIDList.Length > 0)
                     {
-
-                        var ts =DateTime.Now;
-                        List <(string Tag, object Value)> data = new List<(string Tag, object Value)>(); 
-                        //Dictionary<string, dynamic> dataValues = new Dictionary<string, dynamic>();
+                        var ts =DateTime.Now; 
                         var opcData = opcUaClient.ReadNodes(nodeIDList);
-                        for (int i = 0; i < opcData.Count; i++)
-                        {
-                            var nodeData = opcData[i];
-                            var nodeKey = NodeList[i];
-
-                            if (DataValue.IsGood(nodeData))
-                            {
-                                string tagName = nodeKey.DisplayName.Text;
-                                var v = nodeData.Value;
-                                var v_Type = v.GetType(); 
-                                if (v_Type == typeof(UInt16))
-                                {
-                                    Int32 tempV =(UInt16)v;
-                                    data.Add((tagName, tempV));
-                                }
-                                else if (v_Type == typeof(Int16))
-                                {
-                                    Int32 tempV = (Int16)v;
-                                    data.Add((tagName, tempV));
-                                }
-                                else if(v_Type == typeof(Opc.Ua.ExtensionObject))
-                                {
-                                    ExtensionObject obj= (ExtensionObject)v;
-                                    data.Add((tagName, GetOPCuaExtensionObjectValut(obj)));
-                                }
-                                else
-                                    data.Add((tagName, v));
-
-                            }
-                        }
-                        if(data.Count>0)
-                        {
-                            _iotclient.CheckDataBaseOpen();
-                            _iotclient.BulkWriteAsync(deviceShortNameByStorageGroupName, ts, data);
-                        }
-
+                        var res = SaveNodeDataValue2IotDb(deviceShortNameByStorageGroupName,
+                                                                ts,opcData, NodeList).Result;
                         ret.StatusType = VaribaleStatusTypeEnum.Good;
-                        ret.Value = $"{ts:yyyy-MM-dd HH:mm:ss}数据写入成功，{data.Count}个测点数据";
-                        //if (dataValues.Count > 0)
-                        //    ret.Value = dataValues;
+                        ret.Value = $"{ts:yyyy-MM-dd HH:mm:ss}数据写入完成，共计{res}个测点数据";
                     }
                 }
                 catch (Exception ex)
@@ -374,12 +386,51 @@ namespace DriverCollectOPCUaDataClient
             else
             {
                 ret.StatusType = VaribaleStatusTypeEnum.Bad;
-                ret.Message = "连接失败";
+                ret.Value = $"OPC设备连接失败，url:{Uri}";
             }
             return ret;
         }
 
+        private async Task<int> SaveNodeDataValue2IotDb(string deviceShortNameByStorageGroupName,DateTime ts, List<DataValue> opcData,List<ReferenceDescription> NodeList)
+        {
+            List<(string Tag, object Value)> data = new List<(string Tag, object Value)>();
+            for (int i = 0; i < opcData.Count; i++)
+            {
+                var nodeData = opcData[i];
+                var nodeKey = NodeList[i];
 
+                if (DataValue.IsGood(nodeData))
+                {
+                    string tagName = nodeKey.DisplayName.Text;
+                    var v = nodeData.Value;
+                    var v_Type = v.GetType();
+                    if (v_Type == typeof(UInt16))
+                    {
+                        Int32 tempV = (UInt16)v;
+                        data.Add((tagName, tempV));
+                    }
+                    else if (v_Type == typeof(Int16))
+                    {
+                        Int32 tempV = (Int16)v;
+                        data.Add((tagName, tempV));
+                    }
+                    else if (v_Type == typeof(Opc.Ua.ExtensionObject))
+                    {
+                        ExtensionObject obj = (ExtensionObject)v;
+                        data.Add((tagName, GetOPCuaExtensionObjectValut(obj)));
+                    }
+                    else
+                        data.Add((tagName, v));
+
+                }
+            }
+            if (data.Count > 0)
+            {
+                _iotclient.CheckDataBaseOpen();
+                return  await _iotclient.BulkWriteAsync(deviceShortNameByStorageGroupName, ts, data);
+            }
+            return -1;
+        }
         public async Task<RpcResponse> WriteAsync(string RequestId, string Method, DriverAddressIoArgModel Ioarg)
         {
             RpcResponse rpcResponse = new() { IsSuccess = false, Description = "设备驱动内未实现写入功能" };

@@ -17,6 +17,8 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
 
         public static string ReplaceNodeIdStr(this string nodeID)
         {
+            if(string.IsNullOrEmpty(nodeID))
+                return "";
             return nodeID.Replace("&quot;", "\"");
 
         }
@@ -174,7 +176,7 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
         /// <param name="device"></param>
         /// <param name="matrix"></param>
         /// <returns></returns>
-        public static async Task BulkWriteAsync(this Session session, string device, dynamic[,] matrix)
+        public static async Task<int> BulkWriteAsync(this Session session, string device, dynamic[,] matrix)
         {
             var rows = matrix.GetUpperBound(0) + 1;
             var columns = matrix.GetUpperBound(1) + 1;
@@ -190,11 +192,12 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
                     {
 
                         var effect = await session.InsertRecordAsync($"root.{device}", record, false);
+                        return effect;
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($" BulkWriteAsync iotdb error。{ex.Message} {ex.InnerException?.Message} {ex.StackTrace}");
-
+                        return -1;
                        // throw;
                     }
 
@@ -210,8 +213,10 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
                     }
                     var tablet = new Tablet($"root.{device}", measurements, values, timestamps);
                     var effect = await session.InsertTabletAsync(tablet, false);
+                    return effect;
                 }
             }
+            return -2;//数据不对
         }
 
 
@@ -222,7 +227,7 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
         /// <param name="device">所属设备或数据库</param>
         /// <param name="time">时间戳</param> 
         /// <param name="data">测点数据</param>
-        public static async Task BulkWriteAsync(this Session session,string device, DateTime time, List<(string Tag, object Value)> data)
+        public static async Task<int> BulkWriteAsync(this Session session,string device, DateTime time, List<(string Tag, object Value)> data)
         {
             var matrix = new dynamic[2, data.Count + 1];
             matrix[0, 0] = "Timestamp";
@@ -232,7 +237,7 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
                 matrix[0, j + 1] = data[j].Tag;
                 matrix[1, j + 1] = data[j].Value;
             }
-            await session.BulkWriteAsync(device, matrix);
+           return  await session.BulkWriteAsync(device, matrix);
         }
 
 
