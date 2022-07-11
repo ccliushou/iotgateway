@@ -9,6 +9,7 @@ using System.Text;
 namespace DriverCollectOPCUaDataClient
 {
 
+
     [DriverSupported("OPC UA && IotDB")]
     [DriverInfoAttribute("CollectOPCUaDataClient", "V0.1.0", "Copyright ccliushou 2022-7-8")]
     public class CollectOPCUaDataClient : IDriver
@@ -106,11 +107,10 @@ namespace DriverCollectOPCUaDataClient
 
                 string[] tagInfor = key.Split("|");
 
-                var deviceShortNameByStorageGroupName = string.Format("{0}.{1}", StorageGroupName, tagInfor[0]);
+                var deviceShortNameByStorageGroupName = tagInfor[0];
                 var measurePointInfor = tagInfor[1];
                 ReferenceDescription referenceDescription = new ReferenceDescription() { DisplayName = new LocalizedText(measurePointInfor) };
 
-                Console.WriteLine($"{key},{item.ToString()},{monitoredItemNotification.Value.Value.ToString()}");
                 DateTime ts = monitoredItemNotification.Message.PublishTime.AddHours(8);//转为北京时间
 
 
@@ -118,6 +118,9 @@ namespace DriverCollectOPCUaDataClient
                                                     ts,
                                                     new List<DataValue>() { monitoredItemNotification.Value },
                                                     new List<ReferenceDescription>() { referenceDescription }).Result;
+
+                Console.WriteLine($"{key},{item.ToString()},{monitoredItemNotification.Value.Value.ToString()},数据保存结果:{res}");
+
             }
         }
         private void TestSubscription()
@@ -374,7 +377,7 @@ namespace DriverCollectOPCUaDataClient
                         var res = SaveNodeDataValue2IotDb(deviceShortNameByStorageGroupName,
                                                                 ts,opcData, NodeList).Result;
                         ret.StatusType = VaribaleStatusTypeEnum.Good;
-                        ret.Value = $"{ts:yyyy-MM-dd HH:mm:ss}数据写入完成，共计{res}个测点数据";
+                        ret.Value = $"{ts:yyyy-MM-dd HH:mm:ss}数据写入完成:{res}，共计{opcData.Count}个测点数据";
                     }
                 }
                 catch (Exception ex)
@@ -390,8 +393,15 @@ namespace DriverCollectOPCUaDataClient
             }
             return ret;
         }
-
-        private async Task<int> SaveNodeDataValue2IotDb(string deviceShortNameByStorageGroupName,DateTime ts, List<DataValue> opcData,List<ReferenceDescription> NodeList)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="deviceShortNameByStorageGroupName"></param>
+        /// <param name="ts"></param>
+        /// <param name="opcData"></param>
+        /// <param name="NodeList"></param>
+        /// <returns>0:写入成功，-1：写入失败,-2无可写入的数据</returns>
+        private async Task<SaveIotDBStatus> SaveNodeDataValue2IotDb(string deviceShortNameByStorageGroupName,DateTime ts, List<DataValue> opcData,List<ReferenceDescription> NodeList)
         {
             List<(string Tag, object Value)> data = new List<(string Tag, object Value)>();
             for (int i = 0; i < opcData.Count; i++)
@@ -427,9 +437,9 @@ namespace DriverCollectOPCUaDataClient
             if (data.Count > 0)
             {
                 _iotclient.CheckDataBaseOpen();
-                return  await _iotclient.BulkWriteAsync(deviceShortNameByStorageGroupName, ts, data);
-            }
-            return -1;
+                return (SaveIotDBStatus)await _iotclient.BulkWriteAsync(deviceShortNameByStorageGroupName, ts, data);
+            }else
+            return SaveIotDBStatus.无数据;
         }
         public async Task<RpcResponse> WriteAsync(string RequestId, string Method, DriverAddressIoArgModel Ioarg)
         {
