@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+      <TargetFramework>net6.0</TargetFramework>
+      <ImplicitUsings>enable</ImplicitUsings>
+      <Nullable>enable</Nullable>
+      <Version>1.13.760.2</Version>
+      <Description>Apache IoTDB v0.13.x 访问客户端</Description>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+      <WarningLevel>4</WarningLevel>
+      <NoWarn>CS0168;CS8618;CS8600;CS8602;CS8603;CS8604;CS8625;CS8765</NoWarn>
+    </PropertyGroup>
+    
+    <ItemGroup>
+      <PackageReference Include="ApacheThrift" Version="0.16.0" />
+    </ItemGroup>
+
+</Project>

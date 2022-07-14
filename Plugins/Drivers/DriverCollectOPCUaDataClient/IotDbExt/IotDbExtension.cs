@@ -190,9 +190,15 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
                     var record = new RowRecord(UTC_MS(matrix[1, 0]), values, measurements);
                     try
                     {
+                        if(session != null)
+                        {
 
-                        var effect = await session.InsertRecordAsync($"root.{device}", record, false);
-                        return effect;
+                            var effect = await session.InsertRecordAsync($"root.{device}", record, false);
+                            return effect;
+                        }else
+                        {
+                            return -99;
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -212,6 +218,7 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
                         values.Add(cols.Select(j => matrix[i, j]).ToList());
                     }
                     var tablet = new Tablet($"root.{device}", measurements, values, timestamps);
+                    
                     var effect = await session.InsertTabletAsync(tablet, false);
                     return effect;
                 }
@@ -244,7 +251,7 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
 
 
         private readonly static DateTime __UTC_TICKS__ = new DateTime(1970, 01, 01).Add(TimeZoneInfo.Local.BaseUtcOffset);
-        private static long UTC_MS(DateTime time)
+        public static long UTC_MS(this DateTime time)
         {
            return (long)(time - __UTC_TICKS__).TotalMilliseconds;
         }
@@ -270,7 +277,9 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
                 return "INT32";
             }
             else if (Type == typeof(Int64) ||
-                    Type == typeof(long) )
+                    Type == typeof(long) ||
+                    Type == typeof(DateTime) ||
+                    Type == typeof(System.UInt64))
             {
                 return "INT64";
             }
@@ -288,6 +297,9 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
             else if (Type == typeof(bool))
             {
                 return "BOOLEAN";
+            }else if (Type == typeof(Opc.Ua.NodeId))
+            {
+
             }
             return "TEXT";
         }

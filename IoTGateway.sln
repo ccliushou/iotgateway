@@ -47,7 +47,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DriverFanucHsl", "Plugins\D
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DriverFanuc", "Plugins\Drivers\DriverFanuc\DriverFanuc.csproj", "{41F81606-1728-4A03-AE64-FA2CCF49BE5A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DriverCollectOPCUaDataClient", "Plugins\Drivers\DriverCollectOPCUaDataClient\DriverCollectOPCUaDataClient.csproj", "{51F1EFA0-19CD-437E-8434-406E4F8619F3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DriverCollectOPCUaDataClient", "Plugins\Drivers\DriverCollectOPCUaDataClient\DriverCollectOPCUaDataClient.csproj", "{51F1EFA0-19CD-437E-8434-406E4F8619F3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lib", "lib", "{251F1E27-AD5D-4EF3-9828-C1E40AA26C38}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Salvini.IoTDB", "Plugins\Drivers\Salvini.IoTDB\Salvini.IoTDB.csproj", "{8D80D810-47BB-4EE4-B610-D3F5F5F93343}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -217,6 +221,14 @@ Global
 		{51F1EFA0-19CD-437E-8434-406E4F8619F3}.Release|Any CPU.Build.0 = Release|Any CPU
 		{51F1EFA0-19CD-437E-8434-406E4F8619F3}.Release|x86.ActiveCfg = Release|Any CPU
 		{51F1EFA0-19CD-437E-8434-406E4F8619F3}.Release|x86.Build.0 = Release|Any CPU
+		{8D80D810-47BB-4EE4-B610-D3F5F5F93343}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D80D810-47BB-4EE4-B610-D3F5F5F93343}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D80D810-47BB-4EE4-B610-D3F5F5F93343}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8D80D810-47BB-4EE4-B610-D3F5F5F93343}.Debug|x86.Build.0 = Debug|Any CPU
+		{8D80D810-47BB-4EE4-B610-D3F5F5F93343}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D80D810-47BB-4EE4-B610-D3F5F5F93343}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8D80D810-47BB-4EE4-B610-D3F5F5F93343}.Release|x86.ActiveCfg = Release|Any CPU
+		{8D80D810-47BB-4EE4-B610-D3F5F5F93343}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -239,6 +251,8 @@ Global
 		{10D22B6E-DE30-4F11-A005-8188DF549F72} = {D05CFF72-D58C-418A-8F52-B06848DAC4F1}
 		{41F81606-1728-4A03-AE64-FA2CCF49BE5A} = {D05CFF72-D58C-418A-8F52-B06848DAC4F1}
 		{51F1EFA0-19CD-437E-8434-406E4F8619F3} = {D05CFF72-D58C-418A-8F52-B06848DAC4F1}
+		{251F1E27-AD5D-4EF3-9828-C1E40AA26C38} = {2C665127-D9D0-445E-80A9-FD459673D454}
+		{8D80D810-47BB-4EE4-B610-D3F5F5F93343} = {251F1E27-AD5D-4EF3-9828-C1E40AA26C38}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1F219808-E6E8-4C1D-B846-41F2F7CF20FA}

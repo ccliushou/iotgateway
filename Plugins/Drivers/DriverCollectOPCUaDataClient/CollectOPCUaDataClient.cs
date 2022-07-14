@@ -90,7 +90,7 @@ namespace DriverCollectOPCUaDataClient
             if (opcUaClient == null || string.IsNullOrEmpty(tag))
                 return null;
             ReferenceDescription[] NodeList = opcUaClient.BrowseNodeReference2(tag);
-            if(NodeList == null|| NodeList.Length==0)
+            if (NodeList == null || NodeList.Length == 0)
                 NodeList = opcUaClient.BrowseNodeReference(tag);
 
             var nodeDescriptionList = NodeList.Where(item =>
@@ -145,9 +145,25 @@ namespace DriverCollectOPCUaDataClient
                  var dataValue = opcUaClient.ReadNode(new NodeId(node.NodeId.ToString()));//读取一次
                  if (DataValue.IsGood(dataValue))
                  {
-                     //
-                     //measurements.Add(("Latitude", "double", "gps Latitude", null, null, null));
-                     measurements.Add((node.DisplayName.Text, dataValue.Value.GetType(), node.BrowseName.ToString(), null, null, null));
+                     if (dataValue.Value == null)
+                     {
+
+                     }
+                     else
+                     {
+
+                         if (dataValue.GetType() == typeof(NodeId))
+                         {
+                             //Opc.Ua.IdType
+                             //NodeId t =(NodeId)dataValue ;
+
+                         }
+                         else
+                             //
+                             //measurements.Add(("Latitude", "double", "gps Latitude", null, null, null));
+                             measurements.Add((node.DisplayName.Text, dataValue.Value.GetType(), node.BrowseName.ToString(), null, null, null));
+
+                     }
                  }
              });
 
@@ -201,6 +217,8 @@ namespace DriverCollectOPCUaDataClient
                 var isok = opcUaClient.ConnectServer(Uri).Wait(Timeout);
                 if (isok)
                 {
+                    //—,特殊字符：root.rczz.973工单接收.灌装B工位—压盖权限，待处理
+
                     opcUaClient.RemoveAllSubscription();//清除订阅
                     InitNodeList(this.TopNodeId_1.ReplaceNodeIdStr());
                     InitNodeList(this.TopNodeId_2.ReplaceNodeIdStr());
@@ -209,14 +227,14 @@ namespace DriverCollectOPCUaDataClient
                     InitNodeList(this.TopNodeId_5.ReplaceNodeIdStr());
                     InitNodeList(this.TopNodeId_6.ReplaceNodeIdStr());
 
-                    if(IsSubscription)
+                    if (IsSubscription)
                     {
                         foreach (var item in OpcVariableNodeDic)
                         {
                             //item.Key
                             foreach (var n in item.Value)
                             {
-                                opcUaClient.AddSubscription($"{item.Key}|{n.DisplayName.Text}" , n.NodeId.ToString(), SubscripCallBack);
+                                opcUaClient.AddSubscription($"{item.Key}|{n.DisplayName.Text}", n.NodeId.ToString(), SubscripCallBack);
                             }
 
                         }
@@ -224,7 +242,7 @@ namespace DriverCollectOPCUaDataClient
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return false;
             }
@@ -326,7 +344,7 @@ namespace DriverCollectOPCUaDataClient
             return str;
         }
         [Method("读OPCUa多个节点", description: "读OPCUa多个节点")]
-        public  DriverReturnValueModel ReadMultipleNode(DriverAddressIoArgModel ioarg)
+        public DriverReturnValueModel ReadMultipleNode(DriverAddressIoArgModel ioarg)
         {
             var ret = new DriverReturnValueModel { StatusType = VaribaleStatusTypeEnum.Good };
 
@@ -348,7 +366,7 @@ namespace DriverCollectOPCUaDataClient
 
                     if (string.IsNullOrEmpty(userTagID))
                     {
-                        if(OpcVariableNodeDic.ContainsKey(deviceShortNameByStorageGroupName))
+                        if (OpcVariableNodeDic.ContainsKey(deviceShortNameByStorageGroupName))
                             NodeList = OpcVariableNodeDic[deviceShortNameByStorageGroupName];
                     }
                     else
@@ -372,10 +390,10 @@ namespace DriverCollectOPCUaDataClient
 
                     if (nodeIDList.Length > 0)
                     {
-                        var ts =DateTime.Now; 
+                        var ts = DateTime.Now;
                         var opcData = opcUaClient.ReadNodes(nodeIDList);
                         var res = SaveNodeDataValue2IotDb(deviceShortNameByStorageGroupName,
-                                                                ts,opcData, NodeList).Result;
+                                                                ts, opcData, NodeList).Result;
                         ret.StatusType = VaribaleStatusTypeEnum.Good;
                         ret.Value = $"{ts:yyyy-MM-dd HH:mm:ss}数据写入完成:{res}，共计{opcData.Count}个测点数据";
                     }
@@ -401,45 +419,179 @@ namespace DriverCollectOPCUaDataClient
         /// <param name="opcData"></param>
         /// <param name="NodeList"></param>
         /// <returns>0:写入成功，-1：写入失败,-2无可写入的数据</returns>
-        private async Task<SaveIotDBStatus> SaveNodeDataValue2IotDb(string deviceShortNameByStorageGroupName,DateTime ts, List<DataValue> opcData,List<ReferenceDescription> NodeList)
+        private async Task<SaveIotDBStatus> SaveNodeDataValue2IotDb(string deviceShortNameByStorageGroupName, DateTime ts, List<DataValue> opcData, List<ReferenceDescription> NodeList)
         {
-            List<(string Tag, object Value)> data = new List<(string Tag, object Value)>();
-            for (int i = 0; i < opcData.Count; i++)
-            {
-                var nodeData = opcData[i];
-                var nodeKey = NodeList[i];
 
-                if (DataValue.IsGood(nodeData))
+            try
+            {
+
+                List<(string Tag, object Value)> data = new List<(string Tag, object Value)>();
+                for (int i = 0; i < opcData.Count; i++)
                 {
-                    string tagName = nodeKey.DisplayName.Text;
-                    var v = nodeData.Value;
-                    var v_Type = v.GetType();
-                    if (v_Type == typeof(UInt16))
-                    {
-                        Int32 tempV = (UInt16)v;
-                        data.Add((tagName, tempV));
-                    }
-                    else if (v_Type == typeof(Int16))
-                    {
-                        Int32 tempV = (Int16)v;
-                        data.Add((tagName, tempV));
-                    }
-                    else if (v_Type == typeof(Opc.Ua.ExtensionObject))
-                    {
-                        ExtensionObject obj = (ExtensionObject)v;
-                        data.Add((tagName, GetOPCuaExtensionObjectValut(obj)));
-                    }
-                    else
-                        data.Add((tagName, v));
+                    var nodeData = opcData[i];
+                    var nodeKey = NodeList[i];
 
+                    if (DataValue.IsGood(nodeData))
+                    {
+                        string tagName = nodeKey.DisplayName.Text;
+                        var v = nodeData.Value;
+                        if (nodeData.Value == null)
+                        {
+                            v = "null";
+                        }
+                        var v_Type = v.GetType();
+                        if (v_Type == typeof(UInt16))
+                        {
+                            Int32 tempV = (UInt16)v;
+                            data.Add((tagName, tempV));
+                        }
+                        else if (v_Type == typeof(Byte))
+                        {
+                            Int32 tempV = (Byte)v;
+                            data.Add((tagName, tempV));
+                        }
+                        else if (v_Type == typeof(UInt32) || v_Type == typeof(UInt64))
+                        {
+                            long tempV =0;
+                            if(long.TryParse(v.ToString(), out tempV))
+                                data.Add((tagName, tempV));
+                            else
+                            {
+                                Console.WriteLine($"{v_Type}:{v},无法转换为long类型.");
+                            }
+                        }
+                        else if (v_Type == typeof(SByte))
+                        {
+                            Int32 tempV = (SByte)v;
+                            data.Add((tagName, tempV));
+                        }
+                        else if (v_Type == typeof(Int16))
+                        {
+                            Int32 tempV = (Int16)v;
+                            data.Add((tagName, tempV));
+                        }
+                        else if (v_Type == typeof(System.DateTime))
+                        {
+                            DateTime tempV = (DateTime)v; //
+                            data.Add((tagName, tempV.UTC_MS()));
+                        }
+                        else if (v_Type == typeof(System.UInt64))
+                        {
+                            System.UInt64 tempV = (System.UInt64)v;
+                            data.Add((tagName, tempV));
+                        }
+                        else if (v_Type == typeof(System.Xml.XmlElement))
+                        {
+                            System.Xml.XmlElement obj = (System.Xml.XmlElement)v;
+                            data.Add((tagName, obj.Value));
+                        }
+                        else if (v_Type == typeof(byte[]))
+                        {
+                            byte[] obj = (byte[])v;
+                            data.Add((tagName, System.Text.Encoding.UTF8.GetString(obj)));
+                        }
+                        else if (v_Type == typeof(Guid))
+                        {
+                            Guid obj = (Guid)v;
+                            data.Add((tagName, v.ToString()));
+                        }
+                        else if (v_Type == typeof(Opc.Ua.ExtensionObject))
+                        {
+                            ExtensionObject obj = (ExtensionObject)v;
+                            data.Add((tagName, GetOPCuaExtensionObjectValut(obj)));
+                        }
+                        else if (v_Type == typeof(Opc.Ua.LocalizedText))
+                        {
+                            Opc.Ua.LocalizedText obj = (Opc.Ua.LocalizedText)v;
+                            data.Add((tagName, obj.Text));
+                        }
+                        else if (v_Type == typeof(Opc.Ua.Uuid))
+                        {
+                            Opc.Ua.Uuid obj = (Opc.Ua.Uuid)v;
+                            data.Add((tagName, obj.GuidString));
+                        }
+                        else if (v_Type == typeof(Opc.Ua.QualifiedName))
+                        {
+                            Opc.Ua.QualifiedName obj = (Opc.Ua.QualifiedName)v;
+                            data.Add((tagName, obj.Name));
+                        }//
+                        else if (v_Type == typeof(Opc.Ua.StatusCode))
+                        {
+                            Opc.Ua.StatusCode obj = (Opc.Ua.StatusCode)v;
+                            data.Add((tagName,obj.Code.ToString()));
+                        }//
+                        else if (v_Type == typeof(Opc.Ua.ExpandedNodeId))
+                        {
+                            Opc.Ua.ExpandedNodeId obj = (Opc.Ua.ExpandedNodeId)v;
+
+                            switch (obj.IdType)
+                            {
+                                case IdType.Numeric:
+                                    var v1 = (long.Parse(obj.Identifier.ToString()));
+                                    data.Add((tagName, v1));
+                                    break;
+                                case IdType.String:
+                                    var v2 = ((string)(obj.Identifier));
+                                    data.Add((tagName, v2));
+                                    break;
+                                case IdType.Guid:
+                                    var v3 = ((Guid)(obj.Identifier)).ToString();
+                                    data.Add((tagName, v3));
+                                    break;
+                                case IdType.Opaque:
+                                    var v4 = System.Text.Encoding.UTF8.GetString((byte[])(obj.Identifier));
+                                    data.Add((tagName, v4));
+                                    break;
+                                default:
+                                    break;
+                            }
+
+                        }//Opc.Ua.ExpandedNodeId
+                        else if (v_Type == typeof(Opc.Ua.NodeId))
+                        {
+                            Opc.Ua.NodeId obj = (Opc.Ua.NodeId)v;
+
+                            switch (obj.IdType)
+                            {
+                                case IdType.Numeric:
+                                    var v1 = (long.Parse(obj.Identifier.ToString()));
+                                    data.Add((tagName, v1));
+                                    break;
+                                case IdType.String:
+                                    var v2 = ((string)(obj.Identifier));
+                                    data.Add((tagName, v2));
+                                    break;
+                                case IdType.Guid:
+                                    var v3 = ((Guid)(obj.Identifier)).ToString();
+                                    data.Add((tagName, v3));
+                                    break;
+                                case IdType.Opaque:
+                                    var v4 = System.Text.Encoding.UTF8.GetString((byte[])(obj.Identifier));
+                                    data.Add((tagName, v4));
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                        else
+                            data.Add((tagName, v));
+                        //Opc.Ua.QualifiedName
+                    }
                 }
+                if (data.Count > 0)
+                {
+                    //_iotclient.CheckDataBaseOpen();
+                    return (SaveIotDBStatus)await _iotclient.BulkWriteAsync(deviceShortNameByStorageGroupName, ts, data);
+                }
+                else
+                    return SaveIotDBStatus.无数据;
             }
-            if (data.Count > 0)
+            catch (Exception ex)
             {
-                _iotclient.CheckDataBaseOpen();
-                return (SaveIotDBStatus)await _iotclient.BulkWriteAsync(deviceShortNameByStorageGroupName, ts, data);
-            }else
-            return SaveIotDBStatus.无数据;
+
+                throw;
+            }
+
         }
         public async Task<RpcResponse> WriteAsync(string RequestId, string Method, DriverAddressIoArgModel Ioarg)
         {
