@@ -320,7 +320,7 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
                 else
                 {// 时间序列的数据类型如果发生变化呢？？？
                     string iotDataType = IotDataTypeStr(point.Type);
-                    sql = $"create timeseries root.{shortdeviceName}.{_id} with datatype={iotDataType} tags ( t='{point.Type}', u='{point.Unit}', d='{point.Desc}', @t='{DateTime.Now:yyyy-MM-dd HH:mm:ss}')";
+                    sql = $"create timeseries root.{shortdeviceName}.{_id} with datatype={iotDataType},COMPRESSOR=GZIP tags ( t='{point.Type}', u='{point.Unit}', d='{point.Desc}', @t='{DateTime.Now:yyyy-MM-dd HH:mm:ss}')";
                 }
                 if (point.Downlimit != null && point.Uplimit != null)
                 {

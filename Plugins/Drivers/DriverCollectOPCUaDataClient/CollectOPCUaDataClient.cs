@@ -227,19 +227,19 @@ namespace DriverCollectOPCUaDataClient
                     InitNodeList(this.TopNodeId_5.ReplaceNodeIdStr());
                     InitNodeList(this.TopNodeId_6.ReplaceNodeIdStr());
 
-                    if (IsSubscription)
-                    {
-                        foreach (var item in OpcVariableNodeDic)
-                        {
-                            //item.Key
-                            foreach (var n in item.Value)
-                            {
-                                opcUaClient.AddSubscription($"{item.Key}|{n.DisplayName.Text}", n.NodeId.ToString(), SubscripCallBack);
-                            }
+                    //if (IsSubscription)
+                    //{
+                    //    foreach (var item in OpcVariableNodeDic)
+                    //    {
+                    //        //item.Key
+                    //        foreach (var n in item.Value)
+                    //        {
+                    //            opcUaClient.AddSubscription($"{item.Key}|{n.DisplayName.Text}", n.NodeId.ToString(), SubscripCallBack);
+                    //        }
 
-                        }
-                        //opcUaClient.AddSubscription()
-                    }
+                    //    }
+                    //    //opcUaClient.AddSubscription()
+                    //}
                 }
             }
             catch (Exception ex)
