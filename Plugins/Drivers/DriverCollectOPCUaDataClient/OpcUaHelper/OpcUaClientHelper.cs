@@ -118,6 +118,32 @@ namespace OpcUaHelper
             m_session = await Connect( serverUrl );
         }
 
+        private Uri GetDiscoveryUrl(string discoveryUrl)
+        {
+            if (discoveryUrl.StartsWith("http") && !discoveryUrl.EndsWith("/discovery"))
+            {
+                discoveryUrl += "/discovery";
+            }
+            return new Uri(discoveryUrl);
+        }
+
+        public EndpointDescription GetSelectEndpoint(string discoveryUrl, bool useSecurity, int discoverTimeout)
+        {
+            Uri discoveryUrl2 = GetDiscoveryUrl(discoveryUrl);
+            EndpointConfiguration endpointConfiguration = EndpointConfiguration.Create();
+            endpointConfiguration.OperationTimeout = discoverTimeout;
+            EndpointDescription result;
+            using (DiscoveryClient discoveryClient = DiscoveryClient.Create(discoveryUrl2, endpointConfiguration))
+            {
+                //EndpointDescriptionCollection endpoints = discoveryClient.GetEndpoints(null);
+
+                EndpointDescriptionCollection endpoints = null;
+                discoveryClient.GetEndpoints(null, discoveryUrl, null, null, out endpoints);
+                result = CoreClientUtils.SelectEndpoint(discoveryUrl2, endpoints, useSecurity);
+            }
+            return result;
+        }
+
         /// <summary>
         /// Creates a new session.
         /// </summary>
@@ -136,7 +162,10 @@ namespace OpcUaHelper
                 }
 
                 // select the best endpoint.
-                EndpointDescription endpointDescription = CoreClientUtils.SelectEndpoint(serverUrl, UseSecurity);
+                //EndpointDescription endpointDescription = CoreClientUtils.SelectEndpoint(serverUrl, UseSecurity);
+                EndpointDescription endpointDescription = GetSelectEndpoint(serverUrl, UseSecurity, 5000);
+
+
                 EndpointConfiguration endpointConfiguration = EndpointConfiguration.Create(m_configuration);
 
                 ConfiguredEndpoint endpoint = new ConfiguredEndpoint(null, endpointDescription, endpointConfiguration);

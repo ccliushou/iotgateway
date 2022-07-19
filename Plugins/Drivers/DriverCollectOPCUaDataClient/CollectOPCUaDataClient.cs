@@ -394,7 +394,7 @@ namespace DriverCollectOPCUaDataClient
                         var opcData = opcUaClient.ReadNodes(nodeIDList);
                         var res = SaveNodeDataValue2IotDb(deviceShortNameByStorageGroupName,
                                                                 ts, opcData, NodeList).Result;
-                        ret.StatusType = VaribaleStatusTypeEnum.Good;
+                        ret.StatusType = res== SaveIotDBStatus.成功? VaribaleStatusTypeEnum.Good: VaribaleStatusTypeEnum.MethodError;
                         ret.Value = $"{ts:yyyy-MM-dd HH:mm:ss}数据写入完成:{res}，共计{opcData.Count}个测点数据";
                     }
                 }
@@ -469,6 +469,26 @@ namespace DriverCollectOPCUaDataClient
                         {
                             Int32 tempV = (Int16)v;
                             data.Add((tagName, tempV));
+                        }
+                        else if (v_Type == typeof(Int16[]))
+                        {
+                            Int16[] tempV = (Int16[])v;
+                            StringBuilder sb = new StringBuilder(); 
+                            for (int tempIndex = 0; tempIndex < tempV.Length; tempIndex++)
+                            {
+                                sb.Append(tempV[tempIndex].ToString());
+                            }
+                            data.Add((tagName, sb.ToString()));
+                        }
+                        else if (v_Type == typeof(UInt16[]))
+                        {
+                            UInt16[] tempV = (UInt16[])v;
+                            StringBuilder sb = new StringBuilder();
+                            for (int tempIndex = 0; tempIndex < tempV.Length; tempIndex++)
+                            {
+                                sb.Append(tempV[tempIndex].ToString());
+                            }
+                            data.Add((tagName, sb.ToString()));
                         }
                         else if (v_Type == typeof(System.DateTime))
                         {
@@ -580,8 +600,26 @@ namespace DriverCollectOPCUaDataClient
                 }
                 if (data.Count > 0)
                 {
-                    //_iotclient.CheckDataBaseOpen();
-                    return (SaveIotDBStatus)await _iotclient.BulkWriteAsync(deviceShortNameByStorageGroupName, ts, data);
+                    //iotdb 貌似不支持一次写入太多数据
+                    int iotDB_MaxRows = 8;
+                    int currentPage = 0;
+                    int totlePage =(int)(data.Count / iotDB_MaxRows)+1;
+                    SaveIotDBStatus ret= SaveIotDBStatus.初始状态;
+                    while (currentPage <= totlePage)
+                    {
+                       var tempData= data.Take(iotDB_MaxRows).Skip(currentPage* iotDB_MaxRows).ToList();
+                       var tempRes=  (SaveIotDBStatus)await _iotclient.BulkWriteAsync(deviceShortNameByStorageGroupName, ts, tempData);
+                        if(ret == SaveIotDBStatus.初始状态 )
+                        {
+                            ret = tempRes;
+                        }else if(ret != tempRes)
+                        {
+                            ret = SaveIotDBStatus.部分数据保存失败;
+                        }
+                        currentPage++;
+                    }
+
+                    return ret;
                 }
                 else
                     return SaveIotDBStatus.无数据;

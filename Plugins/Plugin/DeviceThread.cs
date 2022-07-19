@@ -111,7 +111,7 @@ namespace Plugin
                                                 //这是设备变量列表要用的
                                                 mqttServer.PublishAsync($"internal/v1/gateway/telemetry/{_device.DeviceName}/{item.Name}", JsonConvert.SerializeObject(ret));
                                                 //这是在线组态要用的
-                                                mqttServer.PublishAsync($"v1/gateway/telemetry/{_device.DeviceName}/{item.Name}", JsonConvert.SerializeObject(ret.CookedValue));
+                                                //mqttServer.PublishAsync($"v1/gateway/telemetry/{_device.DeviceName}/{item.Name}", JsonConvert.SerializeObject(ret.CookedValue));
                                             }
 
                                             DeviceValues[item.ID] = ret;

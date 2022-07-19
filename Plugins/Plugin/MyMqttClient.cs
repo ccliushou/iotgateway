@@ -588,14 +588,14 @@ namespace Plugin
                     }
                 }
 
-                foreach (var payload in SendModel[device.DeviceName])
-                {
-                    foreach (var kv in payload.Values)
-                    {
-                        //更新到UAService
-                        _uaNodeManager.UpdateNode($"{device.Parent.DeviceName}.{device.DeviceName}.{kv.Key}", kv.Value);
-                    }
-                }
+                //foreach (var payload in SendModel[device.DeviceName])
+                //{
+                //    foreach (var kv in payload.Values)
+                //    {
+                //        //更新到UAService
+                //        _uaNodeManager.UpdateNode($"{device.Parent.DeviceName}.{device.DeviceName}.{kv.Key}", kv.Value);
+                //    }
+                //}
 
 
             }
