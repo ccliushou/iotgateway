@@ -122,7 +122,6 @@ namespace Plugin
                 try
                 {
                     var dll = Assembly.LoadFrom(file);
-
                     foreach (var type in dll.GetTypes().Where(x => typeof(IDriver).IsAssignableFrom(x) && x.IsClass))
                     {
                         DriverInfo driverInfo = new DriverInfo
