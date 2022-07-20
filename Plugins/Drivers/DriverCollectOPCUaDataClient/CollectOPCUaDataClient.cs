@@ -39,6 +39,10 @@ namespace DriverCollectOPCUaDataClient
         [ConfigParameter("IotDb存储组名称STORAGE group")]
         public string StorageGroupName { get; set; } = "rczz";
 
+        [ConfigParameter("一次写入iotdb的最大测点数量")]
+        public int IotTimeseriesMaxCount { get; set; } = 5;
+
+
         [ConfigParameter("第一组NodeId")]
         public string TopNodeId_1 { get; set; } = "数据1|ns=2;s=实时模拟";
         [ConfigParameter("第二组NodeId")]
@@ -601,13 +605,13 @@ namespace DriverCollectOPCUaDataClient
                 if (data.Count > 0)
                 {
                     //iotdb 貌似不支持一次写入太多数据
-                    int iotDB_MaxRows = 8;
+                    int iotDB_MaxRows = IotTimeseriesMaxCount;
                     int currentPage = 0;
-                    int totlePage =(int)(data.Count / iotDB_MaxRows)+1;
+                    int totlePage =(int)Math.Ceiling(((decimal)data.Count / (decimal)iotDB_MaxRows));
                     SaveIotDBStatus ret= SaveIotDBStatus.初始状态;
-                    while (currentPage <= totlePage)
+                    while (currentPage < totlePage)
                     {
-                       var tempData= data.Take(iotDB_MaxRows).Skip(currentPage* iotDB_MaxRows).ToList();
+                       var tempData= data.Skip(currentPage* iotDB_MaxRows).Take(iotDB_MaxRows).ToList();
                        var tempRes=  (SaveIotDBStatus)await _iotclient.BulkWriteAsync(deviceShortNameByStorageGroupName, ts, tempData);
                         if(ret == SaveIotDBStatus.初始状态 )
                         {

@@ -12,7 +12,7 @@
 	
 
   <ItemGroup>
-    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.4.367.75" />
+    <PackageReference Include="OPCFoundation.NetStandard.Opc.Ua.Client" Version="1.4.370.1" />
     <PackageReference Include="Silkier" Version="1.0.424" />
   </ItemGroup>
 
