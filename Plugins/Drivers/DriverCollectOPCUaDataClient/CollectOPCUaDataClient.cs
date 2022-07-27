@@ -40,7 +40,18 @@ namespace DriverCollectOPCUaDataClient
         public string StorageGroupName { get; set; } = "rczz";
 
         [ConfigParameter("一次写入iotdb的最大测点数量")]
-        public int IotTimeseriesMaxCount { get; set; } = 5;
+        public int IotTimeseriesMaxCount { get; set; } = 200;
+
+
+
+        [ConfigParameter("NodeIdFile")]
+        public string NodeIdNsPrefix { get; set; } = "ns=3;s=";
+
+        [ConfigParameter("NodeIdParentName")]
+        public string NodeIdParentName { get; set; } = "工单发送_DB";
+
+        [ConfigParameter("NodeIdFile")]
+        public string NodeIdFile { get; set; } = String.Empty;
 
 
         [ConfigParameter("第一组NodeId")]
@@ -142,41 +153,48 @@ namespace DriverCollectOPCUaDataClient
 
             var NodeList = GetBrowseVariableNodeList(tasInfor[1]);
             var deviceShortNameByStorageGroupName = string.Format("{0}.{1}", StorageGroupName, tasInfor[0]);
+
+            InitOpcDriverNodeList(NodeList, deviceShortNameByStorageGroupName);
+
+        }
+
+        private void InitOpcDriverNodeList(List<ReferenceDescription> NodeList,string deviceShortNameByStorageGroupName)
+        {
+
             var iotFulldeviceName = string.Format("root.{0}", deviceShortNameByStorageGroupName);
             List<(string Tag, Type Type, string Desc, string Unit, double? Downlimit, double? Uplimit)> measurements = new List<(string Tag, Type Type, string Desc, string Unit, double? Downlimit, double? Uplimit)>();
             NodeList.ForEach(node =>
-             {
-                 var dataValue = opcUaClient.ReadNode(new NodeId(node.NodeId.ToString()));//读取一次
-                 if (DataValue.IsGood(dataValue))
-                 {
-                     if (dataValue.Value == null)
-                     {
+            {
+                var dataValue = opcUaClient.ReadNode(new NodeId(node.NodeId.ToString()));//读取一次
+                if (DataValue.IsGood(dataValue))
+                {
+                    if (dataValue.Value == null)
+                    {
 
-                     }
-                     else
-                     {
+                    }
+                    else
+                    {
 
-                         if (dataValue.GetType() == typeof(NodeId))
-                         {
-                             //Opc.Ua.IdType
-                             //NodeId t =(NodeId)dataValue ;
+                        if (dataValue.GetType() == typeof(NodeId))
+                        {
+                            //Opc.Ua.IdType
+                            //NodeId t =(NodeId)dataValue ;
 
-                         }
-                         else
-                             //
-                             //measurements.Add(("Latitude", "double", "gps Latitude", null, null, null));
-                             measurements.Add((node.DisplayName.Text, dataValue.Value.GetType(), node.BrowseName.ToString(), null, null, null));
+                        }
+                        else
+                            //
+                            //measurements.Add(("Latitude", "double", "gps Latitude", null, null, null));
+                            measurements.Add((node.DisplayName.Text, dataValue.Value.GetType(), node.BrowseName.ToString(), null, null, null));
 
-                     }
-                 }
-             });
+                    }
+                }
+            });
 
             //
             _iotclient.InitializeAsync(deviceShortNameByStorageGroupName, measurements);
 
             IotDBMeasureList.Add(deviceShortNameByStorageGroupName, measurements);
             OpcVariableNodeDic.Add(deviceShortNameByStorageGroupName, NodeList);
-
         }
         private void ConnectIotDB()
         {
@@ -224,12 +242,35 @@ namespace DriverCollectOPCUaDataClient
                     //—,特殊字符：root.rczz.973工单接收.灌装B工位—压盖权限，待处理
 
                     opcUaClient.RemoveAllSubscription();//清除订阅
-                    InitNodeList(this.TopNodeId_1.ReplaceNodeIdStr());
-                    InitNodeList(this.TopNodeId_2.ReplaceNodeIdStr());
-                    InitNodeList(this.TopNodeId_3.ReplaceNodeIdStr());
-                    InitNodeList(this.TopNodeId_4.ReplaceNodeIdStr());
-                    InitNodeList(this.TopNodeId_5.ReplaceNodeIdStr());
-                    InitNodeList(this.TopNodeId_6.ReplaceNodeIdStr());
+
+                    if(!string.IsNullOrEmpty(NodeIdFile)&&File.Exists(NodeIdFile))
+                    {
+                        //通过文本文件的方式获取
+                        string[] nodeidStr= File.ReadAllLines(NodeIdFile, Encoding.UTF8);
+                        var deviceShortNameByStorageGroupName = string.Format("{0}.{1}", StorageGroupName, NodeIdParentName);
+
+                        List<ReferenceDescription> NodeList = new List<ReferenceDescription>();
+                        for (int i = 0; i < nodeidStr.Length; i++)
+                        {
+                            string[] txt= nodeidStr[i].Split('\t');
+                            ReferenceDescription referenceDescription = new ReferenceDescription() {
+                                NodeId = new ExpandedNodeId(string.Format("{0}{1}", NodeIdNsPrefix, txt[4])),
+                                BrowseName= txt[0],
+                            };
+                            NodeList.Add(referenceDescription);
+                        }
+                        InitOpcDriverNodeList(null, deviceShortNameByStorageGroupName);
+                    }
+                    else
+                    {
+                        InitNodeList(this.TopNodeId_1.ReplaceNodeIdStr());
+                        InitNodeList(this.TopNodeId_2.ReplaceNodeIdStr());
+                        InitNodeList(this.TopNodeId_3.ReplaceNodeIdStr());
+                        InitNodeList(this.TopNodeId_4.ReplaceNodeIdStr());
+                        InitNodeList(this.TopNodeId_5.ReplaceNodeIdStr());
+                        InitNodeList(this.TopNodeId_6.ReplaceNodeIdStr());
+                    }
+
 
                     //if (IsSubscription)
                     //{
@@ -399,6 +440,77 @@ namespace DriverCollectOPCUaDataClient
                         var res = SaveNodeDataValue2IotDb(deviceShortNameByStorageGroupName,
                                                                 ts, opcData, NodeList).Result;
                         ret.StatusType = res== SaveIotDBStatus.成功? VaribaleStatusTypeEnum.Good: VaribaleStatusTypeEnum.MethodError;
+                        ret.Value = $"{ts:yyyy-MM-dd HH:mm:ss}数据写入完成:{res}，共计{opcData.Count}个测点数据";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ret.StatusType = VaribaleStatusTypeEnum.Bad;
+                    ret.Value = $"读取失败,{ex.Message}";
+                }
+            }
+            else
+            {
+                ret.StatusType = VaribaleStatusTypeEnum.Bad;
+                ret.Value = $"OPC设备连接失败，url:{Uri}";
+            }
+            return ret;
+        }
+
+
+
+        [Method("通过Json文件读OPCUa多个节点", description: "通过Json文件读OPCUa多个节点")]
+        public DriverReturnValueModel ReadJosonNode(DriverAddressIoArgModel ioarg)
+        {
+            var ret = new DriverReturnValueModel { StatusType = VaribaleStatusTypeEnum.Good };
+
+            if (IsConnected)
+            {
+                try
+                {
+                    // ioarg.Address:  deviceShortName|tag
+                    string[] tasInfor = ioarg.Address.Split("|");
+
+                    var deviceShortNameByStorageGroupName = string.Format("{0}.{1}", StorageGroupName, tasInfor[0]);
+
+                    string userTagID = string.Empty;
+                    if (tasInfor.Length == 2)//存在 tagID 
+                    {
+                        userTagID = tasInfor[1];
+                    }
+                    List<ReferenceDescription> NodeList = null;
+
+                    if (string.IsNullOrEmpty(userTagID))
+                    {
+                        if (OpcVariableNodeDic.ContainsKey(deviceShortNameByStorageGroupName))
+                            NodeList = OpcVariableNodeDic[deviceShortNameByStorageGroupName];
+                    }
+                    else
+                    {
+                        NodeList = opcUaClient.BrowseNodeReference2(userTagID).Where(item =>
+                        {
+                            return (item.NodeClass == NodeClass.Variable);
+                        }).ToList();
+                    }
+                    if (NodeList == null)
+                    {
+                        ret.StatusType = VaribaleStatusTypeEnum.Bad;
+                        ret.Value = $"读取失败,设备信息与预置信息不匹配";
+                        return ret;
+                    }
+
+                    var nodeIDList = NodeList.Select(item =>
+                    {
+                        return new NodeId(item.NodeId.Identifier.ToString(), item.NodeId.NamespaceIndex);
+                    }).ToArray();
+
+                    if (nodeIDList.Length > 0)
+                    {
+                        var ts = DateTime.Now;
+                        var opcData = opcUaClient.ReadNodes(nodeIDList);
+                        var res = SaveNodeDataValue2IotDb(deviceShortNameByStorageGroupName,
+                                                                ts, opcData, NodeList).Result;
+                        ret.StatusType = res == SaveIotDBStatus.成功 ? VaribaleStatusTypeEnum.Good : VaribaleStatusTypeEnum.MethodError;
                         ret.Value = $"{ts:yyyy-MM-dd HH:mm:ss}数据写入完成:{res}，共计{opcData.Count}个测点数据";
                     }
                 }
