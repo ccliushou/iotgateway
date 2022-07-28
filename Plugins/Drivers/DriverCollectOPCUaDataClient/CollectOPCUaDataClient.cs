@@ -39,10 +39,8 @@ namespace DriverCollectOPCUaDataClient
         [ConfigParameter("IotDb存储组名称STORAGE group")]
         public string StorageGroupName { get; set; } = "rczz";
 
-        [ConfigParameter("一次写入iotdb的最大测点数量")]
-        public int IotTimeseriesMaxCount { get; set; } = 200;
-
-
+        [ConfigParameter("一次轮询的最大测点数量")]
+        public int PLCPointMaxCount { get; set; } = 200;
 
         [ConfigParameter("NodeIdFile")]
         public string NodeIdNsPrefix { get; set; } = "ns=3;s=";
@@ -158,13 +156,14 @@ namespace DriverCollectOPCUaDataClient
 
         }
 
-        private void InitOpcDriverNodeList(List<ReferenceDescription> NodeList,string deviceShortNameByStorageGroupName)
+        private async void InitOpcDriverNodeList(List<ReferenceDescription> NodeList,string deviceShortNameByStorageGroupName)
         {
 
             var iotFulldeviceName = string.Format("root.{0}", deviceShortNameByStorageGroupName);
             List<(string Tag, Type Type, string Desc, string Unit, double? Downlimit, double? Uplimit)> measurements = new List<(string Tag, Type Type, string Desc, string Unit, double? Downlimit, double? Uplimit)>();
             NodeList.ForEach(node =>
             {
+
                 var dataValue = opcUaClient.ReadNode(new NodeId(node.NodeId.ToString()));//读取一次
                 if (DataValue.IsGood(dataValue))
                 {
@@ -180,6 +179,9 @@ namespace DriverCollectOPCUaDataClient
                             //Opc.Ua.IdType
                             //NodeId t =(NodeId)dataValue ;
 
+                        }else if (dataValue.Value.GetType()== typeof(string))
+                        {
+
                         }
                         else
                             //
@@ -191,7 +193,7 @@ namespace DriverCollectOPCUaDataClient
             });
 
             //
-            _iotclient.InitializeAsync(deviceShortNameByStorageGroupName, measurements);
+            await _iotclient.InitializeAsync(deviceShortNameByStorageGroupName, measurements);
 
             IotDBMeasureList.Add(deviceShortNameByStorageGroupName, measurements);
             OpcVariableNodeDic.Add(deviceShortNameByStorageGroupName, NodeList);
@@ -253,13 +255,18 @@ namespace DriverCollectOPCUaDataClient
                         for (int i = 0; i < nodeidStr.Length; i++)
                         {
                             string[] txt= nodeidStr[i].Split('\t');
+                            if (txt.Length !=5)
+                            {
+                                continue;
+                            }
                             ReferenceDescription referenceDescription = new ReferenceDescription() {
                                 NodeId = new ExpandedNodeId(string.Format("{0}{1}", NodeIdNsPrefix, txt[4])),
                                 BrowseName= txt[0],
+                                DisplayName= txt[0],
                             };
                             NodeList.Add(referenceDescription);
                         }
-                        InitOpcDriverNodeList(null, deviceShortNameByStorageGroupName);
+                        InitOpcDriverNodeList(NodeList, deviceShortNameByStorageGroupName);
                     }
                     else
                     {
@@ -435,83 +442,37 @@ namespace DriverCollectOPCUaDataClient
 
                     if (nodeIDList.Length > 0)
                     {
-                        var ts = DateTime.Now;
-                        var opcData = opcUaClient.ReadNodes(nodeIDList);
-                        var res = SaveNodeDataValue2IotDb(deviceShortNameByStorageGroupName,
-                                                                ts, opcData, NodeList).Result;
-                        ret.StatusType = res== SaveIotDBStatus.成功? VaribaleStatusTypeEnum.Good: VaribaleStatusTypeEnum.MethodError;
-                        ret.Value = $"{ts:yyyy-MM-dd HH:mm:ss}数据写入完成:{res}，共计{opcData.Count}个测点数据";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    ret.StatusType = VaribaleStatusTypeEnum.Bad;
-                    ret.Value = $"读取失败,{ex.Message}";
-                }
-            }
-            else
-            {
-                ret.StatusType = VaribaleStatusTypeEnum.Bad;
-                ret.Value = $"OPC设备连接失败，url:{Uri}";
-            }
-            return ret;
-        }
 
-
-
-        [Method("通过Json文件读OPCUa多个节点", description: "通过Json文件读OPCUa多个节点")]
-        public DriverReturnValueModel ReadJosonNode(DriverAddressIoArgModel ioarg)
-        {
-            var ret = new DriverReturnValueModel { StatusType = VaribaleStatusTypeEnum.Good };
-
-            if (IsConnected)
-            {
-                try
-                {
-                    // ioarg.Address:  deviceShortName|tag
-                    string[] tasInfor = ioarg.Address.Split("|");
-
-                    var deviceShortNameByStorageGroupName = string.Format("{0}.{1}", StorageGroupName, tasInfor[0]);
-
-                    string userTagID = string.Empty;
-                    if (tasInfor.Length == 2)//存在 tagID 
-                    {
-                        userTagID = tasInfor[1];
-                    }
-                    List<ReferenceDescription> NodeList = null;
-
-                    if (string.IsNullOrEmpty(userTagID))
-                    {
-                        if (OpcVariableNodeDic.ContainsKey(deviceShortNameByStorageGroupName))
-                            NodeList = OpcVariableNodeDic[deviceShortNameByStorageGroupName];
-                    }
-                    else
-                    {
-                        NodeList = opcUaClient.BrowseNodeReference2(userTagID).Where(item =>
+                        int plcDB_MaxRows = PLCPointMaxCount;
+                        int currentPage = 0;
+                        int totlePage = (int)Math.Ceiling(((decimal)nodeIDList.Length / (decimal)plcDB_MaxRows));
+                        SaveIotDBStatus saveIotRet = SaveIotDBStatus.初始状态;
+                        while (currentPage < totlePage)
                         {
-                            return (item.NodeClass == NodeClass.Variable);
-                        }).ToList();
-                    }
-                    if (NodeList == null)
-                    {
-                        ret.StatusType = VaribaleStatusTypeEnum.Bad;
-                        ret.Value = $"读取失败,设备信息与预置信息不匹配";
-                        return ret;
-                    }
+                            var tempData = nodeIDList.Skip(currentPage * plcDB_MaxRows).Take(plcDB_MaxRows).ToList();
+                            var tempNodeList = NodeList.Skip(currentPage * plcDB_MaxRows).Take(plcDB_MaxRows).ToList();
 
-                    var nodeIDList = NodeList.Select(item =>
-                    {
-                        return new NodeId(item.NodeId.Identifier.ToString(), item.NodeId.NamespaceIndex);
-                    }).ToArray();
+                            var ts = DateTime.Now;
+                            var opcData = opcUaClient.ReadNodes(tempData.ToArray());
+                            var tempRes = SaveNodeDataValue2IotDb(deviceShortNameByStorageGroupName,
+                                                                    ts, opcData, tempNodeList).Result;
 
-                    if (nodeIDList.Length > 0)
-                    {
-                        var ts = DateTime.Now;
-                        var opcData = opcUaClient.ReadNodes(nodeIDList);
-                        var res = SaveNodeDataValue2IotDb(deviceShortNameByStorageGroupName,
-                                                                ts, opcData, NodeList).Result;
-                        ret.StatusType = res == SaveIotDBStatus.成功 ? VaribaleStatusTypeEnum.Good : VaribaleStatusTypeEnum.MethodError;
-                        ret.Value = $"{ts:yyyy-MM-dd HH:mm:ss}数据写入完成:{res}，共计{opcData.Count}个测点数据";
+                            if (saveIotRet == SaveIotDBStatus.初始状态)
+                            {
+                                saveIotRet = tempRes;
+                            }
+                            else if (saveIotRet != tempRes)
+                            {
+                                saveIotRet = SaveIotDBStatus.部分数据保存失败;
+                            }
+
+                            Console.WriteLine($"读取第{currentPage}页,共计{totlePage},结果:{tempRes.ToString()}");
+                            currentPage++;
+                        }
+
+
+                        ret.StatusType = saveIotRet == SaveIotDBStatus.成功? VaribaleStatusTypeEnum.Good: VaribaleStatusTypeEnum.MethodError;
+                        ret.Value = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}数据写入完成:{saveIotRet}，共计{nodeIDList.Length}个测点数据";
                     }
                 }
                 catch (Exception ex)
@@ -527,6 +488,9 @@ namespace DriverCollectOPCUaDataClient
             }
             return ret;
         }
+
+
+
         /// <summary>
         /// 
         /// </summary>
@@ -717,7 +681,7 @@ namespace DriverCollectOPCUaDataClient
                 if (data.Count > 0)
                 {
                     //iotdb 貌似不支持一次写入太多数据
-                    int iotDB_MaxRows = IotTimeseriesMaxCount;
+                    int iotDB_MaxRows = PLCPointMaxCount;
                     int currentPage = 0;
                     int totlePage =(int)Math.Ceiling(((decimal)data.Count / (decimal)iotDB_MaxRows));
                     SaveIotDBStatus ret= SaveIotDBStatus.初始状态;
@@ -731,6 +695,11 @@ namespace DriverCollectOPCUaDataClient
                         }else if(ret != tempRes)
                         {
                             ret = SaveIotDBStatus.部分数据保存失败;
+                        }
+
+                        if(tempRes!=  SaveIotDBStatus.成功)
+                        {
+
                         }
                         currentPage++;
                     }
