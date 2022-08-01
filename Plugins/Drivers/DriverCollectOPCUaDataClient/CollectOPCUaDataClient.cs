@@ -271,6 +271,10 @@ namespace DriverCollectOPCUaDataClient
                 Console.WriteLine($"-------------------IotDBUrl属性，值：{IotDBUrl}，TopNodeId_1：{TopNodeId_1}");
                 //连接iotdb；
                 ConnectIotDB();
+                if (_iotclient == null)
+                    return false;
+                if (!_iotclient.IsOpen)
+                    return false;
 
                 OpcVariableNodeDic.Clear();
                 IotDBMeasureList.Clear();
