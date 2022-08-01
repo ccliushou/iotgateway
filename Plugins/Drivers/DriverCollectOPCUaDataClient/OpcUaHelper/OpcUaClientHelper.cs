@@ -141,6 +141,8 @@ namespace OpcUaHelper
                 discoveryClient.GetEndpoints(null, discoveryUrl, null, null, out endpoints);
                 result = CoreClientUtils.SelectEndpoint(discoveryUrl2, endpoints, useSecurity);
             }
+            ////人为指定，写死，为了测试
+            //result.EndpointUrl = discoveryUrl;
             return result;
         }
 
@@ -547,6 +549,7 @@ namespace OpcUaHelper
                     AttributeId = Attributes.Value
                 } );
             }
+
             // 读取当前的值
             m_session.Read(
                 null,
@@ -843,9 +846,9 @@ namespace OpcUaHelper
             return result;
         }
 
-        #endregion Node Write/Read Support
+#endregion Node Write/Read Support
 
-        #region DeleteNode Support
+#region DeleteNode Support
 
         /// <summary>
         /// 删除一个节点的操作，除非服务器配置允许，否则引发异常，成功返回<c>True</c>，否则返回<c>False</c>
@@ -873,9 +876,9 @@ namespace OpcUaHelper
             return !StatusCode.IsBad( results[0] );
         }
 
-        #endregion DeleteNode Support
+#endregion DeleteNode Support
 
-        #region Test Function
+#region Test Function
 
         /// <summary>
         /// 新增一个节点数据
@@ -924,9 +927,9 @@ namespace OpcUaHelper
             ClientBase.ValidateDiagnosticInfos( diagnosticInfos, nodesToAdd );
         }
 
-        #endregion Test Function
+#endregion Test Function
 
-        #region Monitor Support
+#region Monitor Support
 
         /// <summary>
         /// 新增一个订阅，需要指定订阅的关键字，订阅的tag名，以及回调方法
@@ -1029,9 +1032,9 @@ namespace OpcUaHelper
             }
         }
 
-        #endregion Monitor Support
+#endregion Monitor Support
 
-        #region ReadHistory Support
+#region ReadHistory Support
 
         /// <summary>
         /// read History data
@@ -1137,9 +1140,9 @@ namespace OpcUaHelper
             }
         }
 
-        #endregion ReadHistory Support
+#endregion ReadHistory Support
 
-        #region BrowseNode Support
+#region BrowseNode Support
 
         /// <summary>
         /// 浏览一个节点的引用
@@ -1218,9 +1221,9 @@ namespace OpcUaHelper
 
         }
 
-        #endregion BrowseNode Support
+#endregion BrowseNode Support
 
-        #region Read Attributes Support
+#region Read Attributes Support
 
         /// <summary>
         /// 读取一个节点的所有属性
@@ -1452,9 +1455,9 @@ namespace OpcUaHelper
             return results.ToArray( );
         }
 
-        #endregion Read Attributes Support
+#endregion Read Attributes Support
 
-        #region Method Call Support
+#region Method Call Support
 
         /// <summary>
         /// call a server method
@@ -1478,9 +1481,9 @@ namespace OpcUaHelper
             return outputArguments.ToArray( );
         }
 
-        #endregion Method Call Support
+#endregion Method Call Support
 
-        #region Private Methods
+#region Private Methods
 
         /// <summary>
         /// Raises the connect complete event on the main GUI thread.
@@ -1496,9 +1499,9 @@ namespace OpcUaHelper
                 throw new Exception( string.Format( "Invalid response from the server. (Response Status: {0})", status ) );
         }
 
-        #endregion Private Methods
+#endregion Private Methods
 
-        #region Private Fields
+#region Private Fields
 
         private ApplicationConfiguration m_configuration;
         private Session m_session;
@@ -1515,6 +1518,6 @@ namespace OpcUaHelper
 
         private Dictionary<string, Subscription> dic_subscriptions;        // 系统所有的节点信息
 
-        #endregion Private Fields
+#endregion Private Fields
     }
 }

@@ -296,6 +296,7 @@ namespace DriverCollectOPCUaDataClient
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Exception Message:{ex.Message}\n{ex.StackTrace}");
                 return false;
             }
             return IsConnected;
@@ -437,7 +438,7 @@ namespace DriverCollectOPCUaDataClient
 
                     var nodeIDList = NodeList.Select(item =>
                     {
-                        return new NodeId(item.NodeId.Identifier.ToString(), item.NodeId.NamespaceIndex);
+                        return new NodeId(item.NodeId.Identifier, item.NodeId.NamespaceIndex);
                     }).ToArray();
 
                     if (nodeIDList.Length > 0)
@@ -466,7 +467,7 @@ namespace DriverCollectOPCUaDataClient
                                 saveIotRet = SaveIotDBStatus.部分数据保存失败;
                             }
 
-                            Console.WriteLine($"读取第{currentPage}页,共计{totlePage},结果:{tempRes.ToString()}");
+                            //Console.WriteLine($"读取第{currentPage}页,共计{totlePage},结果:{tempRes.ToString()}");
                             currentPage++;
                         }
 
@@ -532,8 +533,8 @@ namespace DriverCollectOPCUaDataClient
                         }
                         else if (v_Type == typeof(UInt32) || v_Type == typeof(UInt64))
                         {
-                            long tempV =0;
-                            if(long.TryParse(v.ToString(), out tempV))
+                            long tempV = 0;
+                            if (long.TryParse(v.ToString(), out tempV))
                                 data.Add((tagName, tempV));
                             else
                             {
@@ -553,7 +554,7 @@ namespace DriverCollectOPCUaDataClient
                         else if (v_Type == typeof(Int16[]))
                         {
                             Int16[] tempV = (Int16[])v;
-                            StringBuilder sb = new StringBuilder(); 
+                            StringBuilder sb = new StringBuilder();
                             for (int tempIndex = 0; tempIndex < tempV.Length; tempIndex++)
                             {
                                 sb.Append(tempV[tempIndex].ToString());
@@ -618,7 +619,7 @@ namespace DriverCollectOPCUaDataClient
                         else if (v_Type == typeof(Opc.Ua.StatusCode))
                         {
                             Opc.Ua.StatusCode obj = (Opc.Ua.StatusCode)v;
-                            data.Add((tagName,obj.Code.ToString()));
+                            data.Add((tagName, obj.Code.ToString()));
                         }//
                         else if (v_Type == typeof(Opc.Ua.ExpandedNodeId))
                         {
@@ -675,8 +676,12 @@ namespace DriverCollectOPCUaDataClient
                         }
                         else
                             data.Add((tagName, v));
+
+
                         //Opc.Ua.QualifiedName
                     }
+                    else
+                        Console.WriteLine("not good");
                 }
                 if (data.Count > 0)
                 {
