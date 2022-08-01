@@ -5,6 +5,7 @@ using OpcUaHelper;
 using PluginInterface;
 using Silkier.Extensions;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace DriverCollectOPCUaDataClient
 {
@@ -34,7 +35,7 @@ namespace DriverCollectOPCUaDataClient
 
 
         [ConfigParameter("IotDB 地址")]
-        public string IotDBUrl { get; set; } = @"iotdb://root:root@127.0.0.1:6667/appName=testapp";
+        public string IotDBUrl { get; set; } = @"iotdb://root:root@127.0.0.1:6667/?appName=iTSDB&fetchSize=1800";// @"iotdb://root:root@127.0.0.1:6667/appName=testapp"   @"server=127.0.0.1;user=root;password=root;database=IoTSharp"
 
         [ConfigParameter("IotDb存储组名称STORAGE group")]
         public string StorageGroupName { get; set; } = "rczz";
@@ -201,13 +202,16 @@ namespace DriverCollectOPCUaDataClient
 
             if (_iotclient != null&& _iotclient.IsOpen)
                 return;
-
+#if false
             Dictionary<string, string> pairs = new Dictionary<string, string>();
             IotDBUrl.Split(';', StringSplitOptions.RemoveEmptyEntries).ForEach(f =>
             {
                 var kv = f.Split('=');
                 pairs.TryAdd(key: kv[0], value: kv[1]);
             });
+
+            Console.WriteLine($"**********IotDBUrl属性，值：{IotDBUrl}");
+
             string host = pairs.GetValueOrDefault("Server") ?? "127.0.0.1";
             int port = int.Parse(pairs.GetValueOrDefault("Port") ?? "6667");
             string username = pairs.GetValueOrDefault("User") ?? "root";
@@ -215,6 +219,36 @@ namespace DriverCollectOPCUaDataClient
             int fetchSize = int.Parse(pairs.GetValueOrDefault("fetchSize") ?? "1800");
             bool enableRpcCompression = bool.Parse(pairs.GetValueOrDefault("enableRpcCompression") ?? "false");
             int? poolSize = pairs.GetValueOrDefault("poolSize") != null ? int.Parse(pairs.GetValueOrDefault("poolSize")) : null;
+            
+#else
+
+            string url = IotDBUrl;
+            //url = iotdb://root:root@127.0.0.1:6667/?appName=iTSDB&fetchSize=1800
+            var match_host = new Regex(@"@((2(5[0-5]|[0-4]\d))|[0-1]?\d{1,2})(\.((2(5[0-5]|[0-4]\d))|[0-1]?\d{1,2})){3}:").Match(url);
+            var match_port = new Regex(@":(\d{1,5})/?").Match(url);
+            var match_user = new Regex(@"iotdb://(\w+):").Match(url);
+            var match_pwd = new Regex(@":(\w+\S+){1}(@)").Match(url);
+
+            var host = match_host.Success ? match_host.Value[1..^1] : "127.0.0.1";
+            var port = match_port.Success ? int.Parse(match_port.Value[1..].Replace("/", string.Empty)) : 6667;
+            var username = match_user.Success ? match_user.Value[8..^1] : "root";
+            var password = match_pwd.Success ? match_pwd.Value[1..^1] : "root";
+
+            Dictionary<string, string> pairs = new Dictionary<string, string>();
+            var kvParaStrIndex= IotDBUrl.IndexOf('?');
+            if (kvParaStrIndex < 0)
+                kvParaStrIndex = 0;
+            IotDBUrl.Substring(kvParaStrIndex).Split('&', StringSplitOptions.RemoveEmptyEntries).ForEach(f =>
+            {
+                var kv = f.Split('=');
+                pairs.TryAdd(key: kv[0], value: kv[1]);
+            });
+
+            int fetchSize = int.Parse(pairs.GetValueOrDefault("fetchSize") ?? "1800");
+            bool enableRpcCompression = bool.Parse(pairs.GetValueOrDefault("enableRpcCompression") ?? "false");
+            int? poolSize = pairs.GetValueOrDefault("poolSize") != null ? int.Parse(pairs.GetValueOrDefault("poolSize")) : null;
+
+#endif
             _iotclient = new Salvini.IoTDB.Session(host, port, username, password, fetchSize, poolSize, enableRpcCompression);
             _iotclient.CheckDataBaseOpen();
 
