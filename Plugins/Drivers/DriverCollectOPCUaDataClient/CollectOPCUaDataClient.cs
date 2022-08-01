@@ -86,9 +86,6 @@ namespace DriverCollectOPCUaDataClient
         public CollectOPCUaDataClient(Guid deviceid)
         {
             DeviceId = deviceid;
-
-            //连接iotdb；
-            ConnectIotDB();
         }
 
         public bool IsConnected
@@ -200,7 +197,9 @@ namespace DriverCollectOPCUaDataClient
         }
         private void ConnectIotDB()
         {
-            if (_iotclient != null)
+
+
+            if (_iotclient != null&& _iotclient.IsOpen)
                 return;
 
             Dictionary<string, string> pairs = new Dictionary<string, string>();
@@ -235,6 +234,10 @@ namespace DriverCollectOPCUaDataClient
         {
             try
             {
+                Console.WriteLine($"-------------------IotDBUrl属性，值：{IotDBUrl}，TopNodeId_1：{TopNodeId_1}");
+                //连接iotdb；
+                ConnectIotDB();
+
                 OpcVariableNodeDic.Clear();
                 IotDBMeasureList.Clear();
                 opcUaClient = new OpcUaClientHelper() { OpcUaName = "CollectOPCUaDataClient" };
