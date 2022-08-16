@@ -14,6 +14,16 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
 {
     public static class IotDbExtension
     {
+        /// <summary>
+        /// 字符串转Enum
+        /// </summary>
+        /// <typeparam name="T">枚举</typeparam>
+        /// <param name="str">字符串</param>
+        /// <returns>转换的枚举</returns>
+        public static T ToEnum<T>(this string str)
+        {
+            return (T)Enum.Parse(typeof(T), str);
+        }
 
         public static string ReplaceNodeIdStr(this string nodeID)
         {

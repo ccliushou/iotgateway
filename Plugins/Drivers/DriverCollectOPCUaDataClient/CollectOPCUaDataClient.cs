@@ -6,13 +6,33 @@ using PluginInterface;
 using Silkier.Extensions;
 using System.Text;
 using System.Text.RegularExpressions;
+using NPOI.HSSF.Util;
+using NPOI.SS.UserModel;
+using NPOI.SS.Util;
+using NPOI.XSSF.UserModel;
+using NPOI.HSSF.UserModel;
 
 namespace DriverCollectOPCUaDataClient
 {
+    /// <summary>
+    /// 采集策略
+    /// </summary>
+    enum CollectionStrategyEnum
+    {
+        不采集,订阅,轮询
 
-
+    }
+    class CollectionStrategy
+    {
+        //数据名称	数据	类型	备注	采集策略
+        public string 数据名称 { get; set; }
+        public string 数据 { get; set; }
+        public string 类型 { get; set; }
+        public string 备注 { get; set; }
+        public CollectionStrategyEnum 采集策略 { get; set; }
+    }
     [DriverSupported("OPC UA && IotDB")]
-    [DriverInfoAttribute("CollectOPCUaDataClient", "V0.1.0", "Copyright ccliushou 2022-7-8")]
+    [DriverInfoAttribute("CollectOPCUaDataClient", "V0.1.1", "Copyright ccliushou 2022-8-16")]
     public class CollectOPCUaDataClient : IDriver
     {
         OpcUaClientHelper opcUaClient = null;
@@ -32,6 +52,9 @@ namespace DriverCollectOPCUaDataClient
         [ConfigParameter("最小通讯周期ms")]
         public uint MinPeriod { get; set; } = 3000;
 
+
+        [ConfigParameter("变量定义文件")]
+        public string OpcVariableExcelFile { get; set; } = @"灌装机数据整理@D:\融成智造\客户数据\864\配置信息\数据采集修改-863-变量.xlsx";
 
 
         [ConfigParameter("IotDB 地址")]
@@ -55,19 +78,6 @@ namespace DriverCollectOPCUaDataClient
 
         [ConfigParameter("第一组NodeId")]
         public string TopNodeId_1 { get; set; } = "数据1|ns=2;s=实时模拟";
-        [ConfigParameter("第二组NodeId")]
-        public string TopNodeId_2 { get; set; } = "数据2|ns=2;s=实时模拟";
-        [ConfigParameter("第三组NodeId")]
-        public string TopNodeId_3 { get; set; } = "数据3|ns=2;s=实时模拟";
-        [ConfigParameter("第四组NodeId")]
-        public string TopNodeId_4 { get; set; } = "数据4|ns=2;s=实时模拟";
-        [ConfigParameter("第五组NodeId")]
-        public string TopNodeId_5 { get; set; } = "数据5|ns=2;s=实时模拟";
-        [ConfigParameter("第六组NodeId")]
-        public string TopNodeId_6 { get; set; } = "数据6|ns=2;s=实时模拟";
-
-        [ConfigParameter("是否启动订阅模式")]
-        public bool IsSubscription { get; set; } = true;
 
         #endregion
 
@@ -154,6 +164,65 @@ namespace DriverCollectOPCUaDataClient
 
         }
 
+        private List<CollectionStrategy> ExcelVarList = new List<CollectionStrategy>();
+        private void LoadExcelVarData()
+        {
+            ExcelVarList.Clear();
+            //数据名称	数据	类型	备注	采集策略
+
+            if (OpcVariableExcelFile.IsNullOrEmpty())
+                return;
+           var sheetName= OpcVariableExcelFile.Split('@')[0];
+            var excelFile = OpcVariableExcelFile.Split('@')[1];
+            if (!File.Exists(excelFile))
+                return;
+            //CollectionStrategy
+
+
+            using (FileStream fs = new FileStream(excelFile, FileMode.Open))
+            {
+
+                XSSFWorkbook workbook = new XSSFWorkbook(fs);
+                ISheet sheet = workbook.GetSheet(sheetName);
+                int rfirst = sheet.FirstRowNum;
+                int rlast = sheet.LastRowNum;
+                IRow row = sheet.GetRow(rfirst);
+
+                var 数据名称Index= row.Where(c => c.RichStringCellValue.String.Equals("数据名称")).Select(c=>c.ColumnIndex).FirstOrDefault();
+                var 数据Index = row.Where(c => c.RichStringCellValue.String.Equals("数据")).Select(c => c.ColumnIndex).FirstOrDefault();
+
+                var 类型Index = row.Where(c => c.RichStringCellValue.String.Equals("类型")).Select(c => c.ColumnIndex).FirstOrDefault();
+                var 备注Index = row.Where(c => c.RichStringCellValue.String.Equals("备注")).Select(c => c.ColumnIndex).FirstOrDefault();
+                var 采集策略Index = row.Where(c => c.RichStringCellValue.String.Equals("采集策略")).Select(c => c.ColumnIndex).FirstOrDefault();
+
+
+                int cfirst = row.FirstCellNum;
+                int clast = row.LastCellNum;
+                //数据名称	数据	类型	备注	采集策略
+                for (int i = rfirst + 1; i <= rlast; i++)
+                {
+                    CollectionStrategy collectionStrategy = new CollectionStrategy();
+                    IRow ir = sheet.GetRow(i);
+                    var c = ir.GetCell(采集策略Index);
+                    if (c == null)
+                        break;
+                    collectionStrategy.数据名称 = ir.GetCell(数据名称Index)?.RichStringCellValue.String;
+                    collectionStrategy.数据 = ir.GetCell(数据Index)?.RichStringCellValue.String;
+                    collectionStrategy.类型 = ir.GetCell(类型Index)?.RichStringCellValue.String;
+                    collectionStrategy.备注 = ir.GetCell(备注Index)?.RichStringCellValue.String;
+                    collectionStrategy.采集策略 = c.RichStringCellValue.String.ToEnum<CollectionStrategyEnum>();
+                    ExcelVarList.Add(collectionStrategy);
+
+
+                }
+                sheet = null;
+                workbook = null;
+            }
+        }
+        private bool CheckNodeByExcel(ReferenceDescription node)
+        {
+            return false;
+        }
         private async void InitOpcDriverNodeList(List<ReferenceDescription> NodeList,string deviceShortNameByStorageGroupName)
         {
 
@@ -161,6 +230,9 @@ namespace DriverCollectOPCUaDataClient
             List<(string Tag, Type Type, string Desc, string Unit, double? Downlimit, double? Uplimit)> measurements = new List<(string Tag, Type Type, string Desc, string Unit, double? Downlimit, double? Uplimit)>();
             NodeList.ForEach(node =>
             {
+                //与excel中的配置的采集策略进行对比：
+                if(!CheckNodeByExcel(node))
+                    return;
 
                 var dataValue = opcUaClient.ReadNode(new NodeId(node.NodeId.ToString()));//读取一次
                 if (DataValue.IsGood(dataValue))
@@ -269,6 +341,10 @@ namespace DriverCollectOPCUaDataClient
         {
             try
             {
+                if (_iotclient != null && _iotclient.IsOpen)
+                    return true;
+
+
                 Console.WriteLine($"-------------------IotDBUrl属性，值：{IotDBUrl}，TopNodeId_1：{TopNodeId_1}");
                 //连接iotdb；
                 ConnectIotDB();
@@ -279,7 +355,9 @@ namespace DriverCollectOPCUaDataClient
 
                 OpcVariableNodeDic.Clear();
                 IotDBMeasureList.Clear();
+                LoadExcelVarData();
                 opcUaClient = new OpcUaClientHelper() { OpcUaName = "CollectOPCUaDataClient" };
+
                 var isok = opcUaClient.ConnectServer(Uri).Wait(Timeout);
                 if (isok)
                 {
@@ -313,12 +391,8 @@ namespace DriverCollectOPCUaDataClient
                     else
                     {
                         InitNodeList(this.TopNodeId_1.ReplaceNodeIdStr());
-                        InitNodeList(this.TopNodeId_2.ReplaceNodeIdStr());
-                        InitNodeList(this.TopNodeId_3.ReplaceNodeIdStr());
-                        InitNodeList(this.TopNodeId_4.ReplaceNodeIdStr());
-                        InitNodeList(this.TopNodeId_5.ReplaceNodeIdStr());
-                        InitNodeList(this.TopNodeId_6.ReplaceNodeIdStr());
                     }
+
 
 
                     //if (IsSubscription)
@@ -334,6 +408,9 @@ namespace DriverCollectOPCUaDataClient
                     //    }
                     //    //opcUaClient.AddSubscription()
                     //}
+
+
+
                 }
             }
             catch (Exception ex)

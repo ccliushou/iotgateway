@@ -2,7 +2,7 @@
 @inject IStringLocalizer<Program> Localizer;
 
 <wt:form vm="@Model" height="400">
-    <wt:row items-per-row="ItemsPerRowEnum.Two">
+    <wt:row items-per-row="ItemsPerRowEnum.One">
         @*<wt:textbox field="Entity.DeviceConfigName" />*@
         @{
             if (Model.Entity.EnumInfo != null)
