@@ -196,12 +196,12 @@ namespace DriverCollectOPCUaDataClient
             IotDBMeasureList.Add(deviceShortNameByStorageGroupName, measurements);
             OpcVariableNodeDic.Add(deviceShortNameByStorageGroupName, NodeList);
         }
-        private void ConnectIotDB()
+        private bool ConnectIotDB()
         {
 
 
-            if (_iotclient != null&& _iotclient.IsOpen)
-                return;
+            //if (_iotclient != null&& _iotclient.IsOpen)
+            //    return false;
 #if false
             Dictionary<string, string> pairs = new Dictionary<string, string>();
             IotDBUrl.Split(';', StringSplitOptions.RemoveEmptyEntries).ForEach(f =>
@@ -250,7 +250,8 @@ namespace DriverCollectOPCUaDataClient
 
 #endif
             _iotclient = new Salvini.IoTDB.Session(host, port, username, password, fetchSize, poolSize, enableRpcCompression);
-            _iotclient.CheckDataBaseOpen();
+            if (!_iotclient.CheckDataBaseOpen())
+                return false;
 
             using var query = _iotclient.ExecuteQueryStatementAsync($"show storage group root.{StorageGroupName}");//判断存储组是否已经存在
             if (query.Result.HasNext())
@@ -261,7 +262,7 @@ namespace DriverCollectOPCUaDataClient
             {
                 _iotclient.CreateStorageGroup($"root.{StorageGroupName}");
             }
-
+            return true;
         }
 
         public bool Connect()
