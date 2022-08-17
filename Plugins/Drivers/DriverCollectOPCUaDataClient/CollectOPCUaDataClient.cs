@@ -219,20 +219,53 @@ namespace DriverCollectOPCUaDataClient
                 workbook = null;
             }
         }
-        private bool CheckNodeByExcel(ReferenceDescription node)
+
+        /// <summary>
+        /// 获取node的采集策略
+        /// </summary>
+        /// <param name="node"></param>
+        /// <returns></returns>
+        private CollectionStrategyEnum GetNodeCollectionStrategyByExcel(ReferenceDescription node)
         {
-            return false;
+            var item= ExcelVarList.Where(e => e.数据名称 == node.DisplayName.Text || e.数据 == node.DisplayName.Text).FirstOrDefault();
+            if (item == null)
+                return CollectionStrategyEnum.不采集;
+            else
+                return item.采集策略;
         }
         private async void InitOpcDriverNodeList(List<ReferenceDescription> NodeList,string deviceShortNameByStorageGroupName)
         {
+            //node.DisplayName.Text, dataValue.Value.GetType(), node.BrowseName.ToString()
+            //File.WriteAllText()
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("序号,DisplayName,BrowseName");
+            int index = 0;
+            foreach (var node in NodeList)
+            {
+                sb.AppendLine($"{++index},{node.DisplayName.Text},{node.BrowseName.ToString()}");
+            }
+            string fileName =Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"OPC-device-{deviceShortNameByStorageGroupName}.csv") ;
+            File.WriteAllText(fileName, sb.ToString(), Encoding.UTF8);
 
+            
             var iotFulldeviceName = string.Format("root.{0}", deviceShortNameByStorageGroupName);
             List<(string Tag, Type Type, string Desc, string Unit, double? Downlimit, double? Uplimit)> measurements = new List<(string Tag, Type Type, string Desc, string Unit, double? Downlimit, double? Uplimit)>();
+            
+
+            //订阅的节点
+            List<ReferenceDescription> referencesSubscriptionList = new List<ReferenceDescription>();
+            //轮询的节点
+            List<ReferenceDescription> referencesList = new List<ReferenceDescription>();
             NodeList.ForEach(node =>
             {
                 //与excel中的配置的采集策略进行对比：
-                if(!CheckNodeByExcel(node))
+
+                var nodeCollectionStrategy = GetNodeCollectionStrategyByExcel(node);
+
+                if (nodeCollectionStrategy== CollectionStrategyEnum.不采集)
+                {
                     return;
+                }
 
                 var dataValue = opcUaClient.ReadNode(new NodeId(node.NodeId.ToString()));//读取一次
                 if (DataValue.IsGood(dataValue))
@@ -254,19 +287,32 @@ namespace DriverCollectOPCUaDataClient
 
                         }
                         else
-                            //
+                        {//
                             //measurements.Add(("Latitude", "double", "gps Latitude", null, null, null));
                             measurements.Add((node.DisplayName.Text, dataValue.Value.GetType(), node.BrowseName.ToString(), null, null, null));
+                            if (nodeCollectionStrategy == CollectionStrategyEnum.轮询)
+                                referencesList.Add(node);
+                            else
+                                referencesSubscriptionList.Add(node);
 
+                        }
+                            
                     }
                 }
             });
 
             //
             await _iotclient.InitializeAsync(deviceShortNameByStorageGroupName, measurements);
-
             IotDBMeasureList.Add(deviceShortNameByStorageGroupName, measurements);
-            OpcVariableNodeDic.Add(deviceShortNameByStorageGroupName, NodeList);
+            OpcVariableNodeDic.Add(deviceShortNameByStorageGroupName, referencesList);//NodeList
+
+            //配置订阅的节点
+            foreach (var n in referencesSubscriptionList)
+            {
+                opcUaClient.AddSubscription($"{deviceShortNameByStorageGroupName}|{n.DisplayName.Text}", n.NodeId.ToString(), SubscripCallBack);
+            }
+
+
         }
         private bool ConnectIotDB()
         {

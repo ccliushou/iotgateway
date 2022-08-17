@@ -329,7 +329,16 @@ public class SessionDataSet : System.IDisposable
 
     ~SessionDataSet()
     {
-        this.Dispose();
+        try
+        {
+
+            this.Dispose();
+        }
+        catch (Exception ex)
+        {
+
+            //throw;
+        }
     }
 
     public void Dispose()
