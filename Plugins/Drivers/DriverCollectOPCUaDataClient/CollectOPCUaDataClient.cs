@@ -30,6 +30,11 @@ namespace DriverCollectOPCUaDataClient
         public string 类型 { get; set; }
         public string 备注 { get; set; }
         public CollectionStrategyEnum 采集策略 { get; set; }
+
+        public override string ToString()
+        {
+            return $"{数据名称},{数据},{类型},{备注},{采集策略}";
+        }
     }
     [DriverSupported("OPC UA && IotDB")]
     [DriverInfoAttribute("CollectOPCUaDataClient", "V0.1.1", "Copyright ccliushou 2022-8-16")]
@@ -78,6 +83,10 @@ namespace DriverCollectOPCUaDataClient
 
         [ConfigParameter("第一组NodeId")]
         public string TopNodeId_1 { get; set; } = "数据1|ns=2;s=实时模拟";
+
+
+        [ConfigParameter("是否统计变量信息")]
+        public bool IsReportVarsInfor { get; set; } = false;
 
         #endregion
 
@@ -225,29 +234,59 @@ namespace DriverCollectOPCUaDataClient
         /// </summary>
         /// <param name="node"></param>
         /// <returns></returns>
-        private CollectionStrategyEnum GetNodeCollectionStrategyByExcel(ReferenceDescription node)
+        private CollectionStrategy GetNodeCollectionStrategyByExcel(ReferenceDescription node)
         {
             var item= ExcelVarList.Where(e => e.数据名称 == node.DisplayName.Text || e.数据 == node.DisplayName.Text).FirstOrDefault();
             if (item == null)
-                return CollectionStrategyEnum.不采集;
+                return null;
             else
-                return item.采集策略;
+                return item;
         }
         private async void InitOpcDriverNodeList(List<ReferenceDescription> NodeList,string deviceShortNameByStorageGroupName)
         {
-            //node.DisplayName.Text, dataValue.Value.GetType(), node.BrowseName.ToString()
-            //File.WriteAllText()
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine("序号,DisplayName,BrowseName");
-            int index = 0;
-            foreach (var node in NodeList)
+            if(IsReportVarsInfor)
             {
-                sb.AppendLine($"{++index},{node.DisplayName.Text},{node.BrowseName.ToString()}");
-            }
-            string fileName =Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"OPC-device-{deviceShortNameByStorageGroupName}.csv") ;
-            File.WriteAllText(fileName, sb.ToString(), Encoding.UTF8);
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("序号,DisplayName,BrowseName,数据名称,数据,类型,备注,采集策略,统计情况");
+                int index = 0;
+                //查询该设备的测点信息
+                //var iotdbPoints = await _iotclient.PointsAsync(deviceShortNameByStorageGroupName);
+                foreach (var node in NodeList)
+                {
 
-            
+                    var temp_Strategy = GetNodeCollectionStrategyByExcel(node);
+                    string tempStr = "-,-,-,-,-";
+                    if (temp_Strategy != null)
+                    {
+                        tempStr = temp_Strategy.ToString();
+                    }
+                    string iotPointInforStr = "-";
+                    var iotPointInfor =await _iotclient.QueryDistinctAsync(deviceShortNameByStorageGroupName,node.DisplayName.Text,DateTime.Now.AddDays(-7),DateTime.Now );
+                    if(iotPointInfor!=null&& iotPointInfor.Count>0)
+                    {
+                        iotPointInforStr = "";
+                        int showCount = iotPointInfor.Count;
+                        if (showCount > 5)
+                            showCount = 5;
+                        for (int i = 0; i < showCount; i++)
+                        {
+                            iotPointInforStr = iotPointInforStr + $"|{iotPointInfor[i].Value}";
+                        }
+                        iotPointInforStr = $"【{iotPointInfor.Count}】" + iotPointInforStr;
+                    }
+                    sb.AppendLine($"{++index},{node.DisplayName.Text},{node.BrowseName.ToString()},{tempStr},{iotPointInforStr}");
+                }
+                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Drivers", "ReadDevVars");
+                if (Directory.Exists(filePath))
+                {
+                    Directory.Delete(filePath, true);
+                }
+
+                Directory.CreateDirectory(filePath);
+                string fileName = Path.Combine(filePath, $"OPC-device-{deviceShortNameByStorageGroupName}.csv");
+                File.WriteAllText(fileName, sb.ToString(), Encoding.UTF8);
+            }
+
             var iotFulldeviceName = string.Format("root.{0}", deviceShortNameByStorageGroupName);
             List<(string Tag, Type Type, string Desc, string Unit, double? Downlimit, double? Uplimit)> measurements = new List<(string Tag, Type Type, string Desc, string Unit, double? Downlimit, double? Uplimit)>();
             
@@ -262,7 +301,7 @@ namespace DriverCollectOPCUaDataClient
 
                 var nodeCollectionStrategy = GetNodeCollectionStrategyByExcel(node);
 
-                if (nodeCollectionStrategy== CollectionStrategyEnum.不采集)
+                if (nodeCollectionStrategy==null||nodeCollectionStrategy.采集策略 == CollectionStrategyEnum.不采集)
                 {
                     return;
                 }
@@ -290,7 +329,7 @@ namespace DriverCollectOPCUaDataClient
                         {//
                             //measurements.Add(("Latitude", "double", "gps Latitude", null, null, null));
                             measurements.Add((node.DisplayName.Text, dataValue.Value.GetType(), node.BrowseName.ToString(), null, null, null));
-                            if (nodeCollectionStrategy == CollectionStrategyEnum.轮询)
+                            if (nodeCollectionStrategy.采集策略 == CollectionStrategyEnum.轮询)
                                 referencesList.Add(node);
                             else
                                 referencesSubscriptionList.Add(node);

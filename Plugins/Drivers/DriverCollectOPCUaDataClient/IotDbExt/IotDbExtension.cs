@@ -179,6 +179,32 @@ namespace DriverCollectOPCUaDataClient.IotDbExt
             return data;
 
         }
+        public static async Task<List<(DateTime Time, object Value)>> QueryDistinctAsync(this Session session, string device, string tag, DateTime begin, DateTime end, int digits = 6, int ms = 1000)
+        {
+            var data = new List<(DateTime Time, object Value)>();
+
+            var sql = $"select Distinct({tag}) as infors from root.{device} where time >= {begin:yyyy-MM-dd HH:mm:ss} and time < {end:yyyy-MM-dd HH:mm:ss}";
+
+            try
+            {
+
+                using var query = await session.ExecuteQueryStatementAsync(sql);
+                while (query.HasNext())
+                {
+                    var next = query.Next();
+                    var values = next.Values;
+                    var time = next.GetDateTime();
+                    var value = "NULL".Equals(values[0]) ? double.NaN : values[0];
+                    data.Add((time, value));
+                }
+                return data;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"查询出错：{sql}");
+            }
+            return null;
+        }
         /// <summary>
         /// 批量插入数据
         /// </summary>
