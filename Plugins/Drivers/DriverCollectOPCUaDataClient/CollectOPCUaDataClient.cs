@@ -261,18 +261,21 @@ namespace DriverCollectOPCUaDataClient
                         tempStr = temp_Strategy.ToString();
                     }
                     string iotPointInforStr = "-";
-                    var iotPointInfor =await _iotclient.QueryDistinctAsync(deviceShortNameByStorageGroupName,node.DisplayName.Text,DateTime.Now.AddDays(-7),DateTime.Now );
-                    if(iotPointInfor!=null&& iotPointInfor.Count>0)
+                    if (temp_Strategy != null&& temp_Strategy.采集策略!= CollectionStrategyEnum.不采集)
                     {
-                        iotPointInforStr = "";
-                        int showCount = iotPointInfor.Count;
-                        if (showCount > 5)
-                            showCount = 5;
-                        for (int i = 0; i < showCount; i++)
+                        var iotPointInfor = await _iotclient.QueryDistinctAsync(deviceShortNameByStorageGroupName, node.DisplayName.Text, DateTime.Now.AddDays(-7), DateTime.Now);
+                        if (iotPointInfor != null && iotPointInfor.Count > 0)
                         {
-                            iotPointInforStr = iotPointInforStr + $"|{iotPointInfor[i].Value}";
+                            iotPointInforStr = "";
+                            int showCount = iotPointInfor.Count;
+                            if (showCount > 8)
+                                showCount = 8;
+                            for (int i = 0; i < showCount; i++)
+                            {
+                                iotPointInforStr = iotPointInforStr + $"|{iotPointInfor[i].Value}";
+                            }
+                            iotPointInforStr = $"【{iotPointInfor.Count}】" + iotPointInforStr;
                         }
-                        iotPointInforStr = $"【{iotPointInfor.Count}】" + iotPointInforStr;
                     }
                     sb.AppendLine($"{++index},{node.DisplayName.Text},{node.BrowseName.ToString()},{tempStr},{iotPointInforStr}");
                 }
@@ -409,16 +412,16 @@ namespace DriverCollectOPCUaDataClient
             _iotclient = new Salvini.IoTDB.Session(host, port, username, password, fetchSize, poolSize, enableRpcCompression);
             if (!_iotclient.CheckDataBaseOpen())
                 return false;
-
+            
             using var query = _iotclient.ExecuteQueryStatementAsync($"show storage group root.{StorageGroupName}");//判断存储组是否已经存在
-            if (query.Result.HasNext())
-            {
-                //存储组已经存在，无需处理
-            }
-            else
-            {
-                _iotclient.CreateStorageGroup($"root.{StorageGroupName}");
-            }
+            //if (query.Result.HasNext())
+            //{
+            //    //存储组已经存在，无需处理
+            //}
+            //else
+            //{
+            //    _iotclient.CreateStorageGroup($"root.{StorageGroupName}");
+            //}
             return true;
         }
 
