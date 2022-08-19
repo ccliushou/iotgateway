@@ -966,7 +966,8 @@ namespace OpcUaHelper
                 {
                     StartNodeId = new NodeId( tags[i] ),
                     AttributeId = Attributes.Value,
-                    DisplayName = tags[i],
+                    //DisplayName = tags[i],
+                    //DisplayName = $"{key}|{tags[i]}",
                     SamplingInterval = 100,
                 };
                 item.Notification += ( MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs args ) =>
@@ -995,6 +996,60 @@ namespace OpcUaHelper
                 }
             }
         }
+
+
+        public void AddSubscription(string key, List<ReferenceDescription> tags, Action<string, MonitoredItem, MonitoredItemNotificationEventArgs> callback)
+        {
+            Subscription m_subscription = new Subscription(m_session.DefaultSubscription);
+
+            m_subscription.PublishingEnabled = true;
+            m_subscription.PublishingInterval = 0;
+            m_subscription.KeepAliveCount = uint.MaxValue;
+            m_subscription.LifetimeCount = uint.MaxValue;
+            m_subscription.MaxNotificationsPerPublish = uint.MaxValue;
+            m_subscription.Priority = 100;
+            m_subscription.DisplayName = key;
+
+            for (int i = 0; i < tags.Count; i++)
+            {
+                var tagStr = tags[i].NodeId.ToString();
+                var item = new MonitoredItem
+                {
+                    StartNodeId = new NodeId(tagStr),
+                    //StartNodeId = ExpandedNodeId.ToNodeId(tags[i].NodeId,null),
+                    AttributeId = Attributes.Value,
+                    //DisplayName = $"{key}|{tags[i].DisplayName.Text}" ,
+                    DisplayName = $"{tags[i].DisplayName.Text}",
+                    SamplingInterval = 100,
+                };
+                item.Notification += (MonitoredItem monitoredItem, MonitoredItemNotificationEventArgs args) =>
+                {
+                    callback?.Invoke(key, monitoredItem, args);
+                };
+                m_subscription.AddItem(item);
+            }
+
+            m_session.AddSubscription(m_subscription);
+            m_subscription.Create();
+
+            lock (dic_subscriptions)
+            {
+                if (dic_subscriptions.ContainsKey(key))
+                {
+                    // remove
+                    dic_subscriptions[key].Delete(true);
+                    m_session.RemoveSubscription(dic_subscriptions[key]);
+                    dic_subscriptions[key].Dispose();
+                    dic_subscriptions[key] = m_subscription;
+                }
+                else
+                {
+                    dic_subscriptions.Add(key, m_subscription);
+                }
+            }
+        }
+
+
 
         /// <summary>
         /// 移除订阅消息，如果该订阅消息是批量的，也直接移除

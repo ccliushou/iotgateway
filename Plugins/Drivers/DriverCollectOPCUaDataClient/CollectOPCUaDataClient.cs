@@ -33,7 +33,7 @@ namespace DriverCollectOPCUaDataClient
 
         public override string ToString()
         {
-            return $"{数据名称},{数据},{类型},{备注},{采集策略}";
+            return $"{数据名称},{数据},{类型},{备注?.Replace(",","_")},{采集策略}";
         }
     }
     [DriverSupported("OPC UA && IotDB")]
@@ -135,21 +135,25 @@ namespace DriverCollectOPCUaDataClient
             if (monitoredItemNotification != null)
             {
 
-                string[] tagInfor = key.Split("|");
+                //string[] tagInfor = key.Split("|");
 
-                var deviceShortNameByStorageGroupName = tagInfor[0];
-                var measurePointInfor = tagInfor[1];
+                //var deviceShortNameByStorageGroupName = tagInfor[0];
+                //var measurePointInfor = tagInfor[1];
+
+                var deviceShortNameByStorageGroupName = key;
+                var measurePointInfor = item.DisplayName;
+
                 ReferenceDescription referenceDescription = new ReferenceDescription() { DisplayName = new LocalizedText(measurePointInfor) };
 
-                DateTime ts = monitoredItemNotification.Message.PublishTime.AddHours(8);//转为北京时间
+                //DateTime ts = monitoredItemNotification.Message.PublishTime.AddHours(8);//转为北京时间
 
-
+                DateTime ts = DateTime.Now;
                 var res = SaveNodeDataValue2IotDb(deviceShortNameByStorageGroupName,
                                                     ts,
                                                     new List<DataValue>() { monitoredItemNotification.Value },
                                                     new List<ReferenceDescription>() { referenceDescription }).Result;
-
-                Console.WriteLine($"{key},{item.ToString()},{monitoredItemNotification.Value.Value.ToString()},数据保存结果:{res}");
+                if(item.DisplayName.Contains("工单下发"))
+                    Console.WriteLine($"{DateTime.Now.ToLocalTime()}  {key},{item.DisplayName.ToString()},{monitoredItemNotification.Value.Value.ToString()},数据保存结果:{res}");
 
             }
         }
@@ -348,15 +352,22 @@ namespace DriverCollectOPCUaDataClient
             IotDBMeasureList.Add(deviceShortNameByStorageGroupName, measurements);
             OpcVariableNodeDic.Add(deviceShortNameByStorageGroupName, referencesList);//NodeList
 
-            //配置订阅的节点
-            foreach (var n in referencesSubscriptionList)
-            {
-                opcUaClient.AddSubscription($"{deviceShortNameByStorageGroupName}|{n.DisplayName.Text}", n.NodeId.ToString(), SubscripCallBack);
-            }
+
+
+            opcUaClient.AddSubscription(deviceShortNameByStorageGroupName,
+                                            referencesSubscriptionList,
+                                            SubscripCallBack);
+
+
+            ////配置订阅的节点
+            //foreach (var n in referencesSubscriptionList)
+            //{
+            //    opcUaClient.AddSubscription($"{deviceShortNameByStorageGroupName}|{n.DisplayName.Text}", n.NodeId.ToString(), SubscripCallBack);
+            //}
 
 
         }
-        private bool ConnectIotDB()
+        private async void ConnectIotDB()
         {
 
 
@@ -411,31 +422,30 @@ namespace DriverCollectOPCUaDataClient
 #endif
             _iotclient = new Salvini.IoTDB.Session(host, port, username, password, fetchSize, poolSize, enableRpcCompression);
             if (!_iotclient.CheckDataBaseOpen())
-                return false;
+                return ;
             
-            using var query = _iotclient.ExecuteQueryStatementAsync($"show storage group root.{StorageGroupName}");//判断存储组是否已经存在
-            //if (query.Result.HasNext())
-            //{
-            //    //存储组已经存在，无需处理
-            //}
-            //else
-            //{
-            //    _iotclient.CreateStorageGroup($"root.{StorageGroupName}");
-            //}
-            return true;
+             var query = await _iotclient.ExecuteQueryStatementAsync($"show storage group root.{StorageGroupName}");//判断存储组是否已经存在
+            if (query.HasNext())
+            {
+                //存储组已经存在，无需处理
+            }
+            else
+            {
+                _iotclient.CreateStorageGroup($"root.{StorageGroupName}");
+            }
+            //return true;
         }
 
         public bool Connect()
         {
             try
             {
-                if (_iotclient != null && _iotclient.IsOpen)
-                    return true;
-
-
                 Console.WriteLine($"-------------------IotDBUrl属性，值：{IotDBUrl}，TopNodeId_1：{TopNodeId_1}");
                 //连接iotdb；
-                ConnectIotDB();
+
+                if (_iotclient == null || ! _iotclient.IsOpen)
+                    ConnectIotDB();
+
                 if (_iotclient == null)
                     return false;
                 if (!_iotclient.IsOpen)
@@ -480,25 +490,6 @@ namespace DriverCollectOPCUaDataClient
                     {
                         InitNodeList(this.TopNodeId_1.ReplaceNodeIdStr());
                     }
-
-
-
-                    //if (IsSubscription)
-                    //{
-                    //    foreach (var item in OpcVariableNodeDic)
-                    //    {
-                    //        //item.Key
-                    //        foreach (var n in item.Value)
-                    //        {
-                    //            opcUaClient.AddSubscription($"{item.Key}|{n.DisplayName.Text}", n.NodeId.ToString(), SubscripCallBack);
-                    //        }
-
-                    //    }
-                    //    //opcUaClient.AddSubscription()
-                    //}
-
-
-
                 }
             }
             catch (Exception ex)
@@ -721,7 +712,7 @@ namespace DriverCollectOPCUaDataClient
 
                     if (DataValue.IsGood(nodeData))
                     {
-                        string tagName = nodeKey.DisplayName.Text;
+                        string tagName =$"{nodeKey.DisplayName.Text}" ;
                         var v = nodeData.Value;
                         if (nodeData.Value == null)
                         {
